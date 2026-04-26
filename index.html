@@ -12,8 +12,6 @@
             --accent: #ff6b6b;
             --accent2: #00d4d4;
             --border: #2a2a35;
-            --teal: #00d4d4;
-            --pink: #ffd1dc;
         }
         
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -121,7 +119,6 @@
         
         .main-layout.active { display: flex; }
         
-        /* Sidebar */
         #sidebar {
             width: 340px;
             background: var(--panel);
@@ -206,13 +203,6 @@
             font-weight: 600;
         }
         
-        .toggle-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        /* Canvas Area */
         #canvasArea {
             flex: 1;
             display: flex;
@@ -313,18 +303,6 @@
             border-bottom: 1px solid var(--border);
         }
         
-        .brush-actions {
-            display: flex;
-            gap: 0.5rem;
-            margin-bottom: 1rem;
-        }
-        
-        .brush-actions .btn {
-            flex: 1;
-            font-size: 0.75rem;
-            padding: 0.5rem;
-        }
-        
         .saved-brushes {
             margin-bottom: 1rem;
         }
@@ -419,7 +397,7 @@
         <div id="svgContainer"></div>
         
         <div class="playback-controls">
-            <button class="icon-btn" onclick="togglePlay()" id="playBtn">▶</button>
+            <button class="icon-btn" onclick="togglePlay()" id="playBtn">⏸</button>
             <button class="icon-btn" onclick="resetView()">⟲</button>
             <button class="icon-btn" onclick="zoom(-0.1)">−</button>
             <button class="icon-btn" onclick="zoom(0.1)">+</button>
@@ -429,11 +407,10 @@
 
 <script>
 // ============================================
-// CONFIGURATION - Change your logo filename here
+// CONFIGURATION
 // ============================================
-const LOGO_FILENAME = 'logo.png';  // <-- Change this to your logo's filename
+const LOGO_FILENAME = 'logo.png';
 
-// Apply logo filename
 document.getElementById('headerLogo').src = LOGO_FILENAME;
 document.getElementById('dropLogo').src = LOGO_FILENAME;
 
@@ -441,9 +418,8 @@ document.getElementById('dropLogo').src = LOGO_FILENAME;
 let currentSVG = null;
 let originalSVG = null;
 let threads = [];
-let originalThreadStyles = []; // Store original styles for reset
+let originalThreadStyles = [];
 let isPlaying = true;
-let animationIntervals = [];
 let zoomLevel = 1;
 let savedBrushes = JSON.parse(localStorage.getItem('reeestyle_brushes') || '[]');
 
@@ -491,10 +467,10 @@ function loadSVG(file) {
         svgContainer.innerHTML = '';
         svgContainer.appendChild(currentSVG);
         
-        // Extract threads (groups in Looom SVGs)
+        // Extract threads properly
         extractThreads(currentSVG);
         
-        // Store original styles for reset
+        // Store original styles
         storeOriginalStyles();
         
         // Show editor
@@ -504,66 +480,89 @@ function loadSVG(file) {
         // Update saved brushes UI
         updateSavedBrushesUI();
         
-        // Start animation
-        animateSVG();
+        // Start animation - DO NOT manipulate display/offsetHeight here!
+        // Let SMIL animations run naturally
+        isPlaying = true;
+        document.getElementById('playBtn').textContent = '⏸';
     };
     reader.readAsText(file);
 }
 
-function storeOriginalStyles() {
-    originalThreadStyles = threads.map(t => ({
-        id: t.id,
-        type: t.type,
-        color: t.color,
-        strokeWidth: t.strokeWidth,
-        opacity: t.opacity,
-        strokeLinecap: t.strokeLinecap,
-        blendMode: t.blendMode
-    }));
-}
+// ============================================
+// IMPROVED THREAD DETECTION
+// ============================================
 
-function isThreadVisible(g) {
-    let el = g;
-    while (el && el.tagName !== 'svg') {
-        const display = el.getAttribute('display');
-        const visibility = el.getAttribute('visibility');
-        const opacity = el.getAttribute('opacity');
-        
-        if (display === 'none' || visibility === 'hidden') return false;
-        if (opacity !== null && parseFloat(opacity) <= 0) return false;
-        
-        const style = el.getAttribute('style') || '';
-        if (style.includes('display:none') || style.includes('visibility:hidden')) return false;
-        if (style.includes('opacity:0') || style.includes('opacity: 0')) return false;
-        
-        el = el.parentElement;
-    }
+function isElementVisible(el) {
+    if (!el) return false;
+    const display = el.getAttribute('display');
+    const visibility = el.getAttribute('visibility');
+    if (display === 'none') return false;
+    if (visibility === 'hidden') return false;
+    
+    const opacity = el.getAttribute('opacity');
+    if (opacity !== null && parseFloat(opacity) <= 0) return false;
+    
+    const style = el.getAttribute('style') || '';
+    if (style.includes('display:none') || style.includes('visibility:hidden')) return false;
+    if (style.includes('opacity:0') || style.includes('opacity: 0')) return false;
+    
     return true;
 }
 
-function hasVisiblePaths(g) {
-    const paths = g.querySelectorAll('path, line, polyline, polygon, rect, circle, ellipse');
+function getAllPathsRecursive(element) {
+    // Recursively get ALL path-like elements within a group, including nested groups
+    const paths = [];
+    const walk = (el) => {
+        if (!isElementVisible(el)) return;
+        
+        const tag = el.tagName.toLowerCase();
+        if (['path', 'line', 'polyline', 'polygon', 'rect', 'circle', 'ellipse'].includes(tag)) {
+            paths.push(el);
+        }
+        
+        // Walk children (but skip defs, metadata)
+        for (const child of el.children) {
+            const childTag = child.tagName.toLowerCase();
+            if (childTag !== 'defs' && childTag !== 'metadata' && childTag !== 'title') {
+                walk(child);
+            }
+        }
+    };
+    walk(element);
+    return paths;
+}
+
+function hasDrawableContent(element) {
+    const paths = getAllPathsRecursive(element);
     if (paths.length === 0) return false;
     
     for (const path of paths) {
         const d = path.getAttribute('d');
         const stroke = path.getAttribute('stroke');
         const fill = path.getAttribute('fill');
-        const display = path.getAttribute('display');
-        const visibility = path.getAttribute('visibility');
         
-        if (display === 'none' || visibility === 'hidden') continue;
-        if (path.tagName === 'path' && (!d || d.trim() === '' || d.trim() === 'M0,0')) continue;
+        // Check for actual drawing data
+        if (path.tagName.toLowerCase() === 'path') {
+            if (!d || d.trim() === '' || d.trim() === 'M0,0' || d.trim() === 'M 0 0') continue;
+        }
         
-        const hasVisibleStroke = stroke && stroke !== 'none' && stroke !== 'transparent';
-        const hasVisibleFill = fill && fill !== 'none' && fill !== 'transparent';
+        // Check for visible stroke or fill
+        const hasStroke = stroke && stroke !== 'none' && stroke !== 'transparent';
+        const hasFill = fill && fill !== 'none' && fill !== 'transparent';
         
-        if (!hasVisibleStroke && !hasVisibleFill) continue;
-        
-        const opacity = path.getAttribute('opacity');
-        if (opacity !== null && parseFloat(opacity) <= 0) continue;
+        if (!hasStroke && !hasFill) continue;
         
         return true;
+    }
+    return false;
+}
+
+function isInDefsOrMetadata(element) {
+    let el = element;
+    while (el) {
+        const tag = el.tagName?.toLowerCase();
+        if (tag === 'defs' || tag === 'metadata' || tag === 'title') return true;
+        el = el.parentElement;
     }
     return false;
 }
@@ -572,72 +571,138 @@ function extractThreads(svg) {
     threads = [];
     threadsList.innerHTML = '';
     
-    const groups = svg.querySelectorAll('g');
+    // Strategy: Looom exports threads as top-level <g> elements inside the SVG
+    // Each thread group contains frame subgroups, which contain the actual paths
+    // We need to identify the THREAD-LEVEL groups (not frame-level groups)
     
-    groups.forEach((g, index) => {
-        if (g.closest('defs') || g.closest('metadata') || g.closest('title')) return;
-        if (!isThreadVisible(g)) return;
-        if (!hasVisiblePaths(g)) return;
+    const svgChildren = Array.from(svg.children);
+    const candidateGroups = [];
+    
+    // First pass: find all top-level groups that aren't defs/metadata
+    for (const child of svgChildren) {
+        if (child.tagName.toLowerCase() !== 'g') continue;
+        if (isInDefsOrMetadata(child)) continue;
+        if (!isElementVisible(child)) continue;
         
-        const childGroups = g.querySelectorAll(':scope > g');
-        if (childGroups.length > 0) return;
+        candidateGroups.push(child);
+    }
+    
+    // If we have 1-5 top-level groups, these are likely the threads
+    // Looom supports up to 5 threads [^1^]
+    if (candidateGroups.length >= 1 && candidateGroups.length <= 5) {
+        // These are probably the threads
+        candidateGroups.forEach((g, index) => {
+            if (!hasDrawableContent(g)) return;
+            
+            const allPaths = getAllPathsRecursive(g);
+            if (allPaths.length === 0) return;
+            
+            // Get the first visible path to sample styles
+            let samplePath = null;
+            for (const p of allPaths) {
+                if (isElementVisible(p)) {
+                    samplePath = p;
+                    break;
+                }
+            }
+            if (!samplePath) return;
+            
+            const stroke = samplePath.getAttribute('stroke');
+            const fill = samplePath.getAttribute('fill');
+            const hasStroke = stroke && stroke !== 'none' && stroke !== 'transparent';
+            const hasFill = fill && fill !== 'none' && fill !== 'transparent';
+            
+            let threadType, threadColor;
+            if (hasFill && !hasStroke) {
+                threadType = 'fill';
+                threadColor = fill;
+            } else {
+                threadType = 'line';
+                threadColor = stroke || fill || '#000000';
+            }
+            
+            const thread = {
+                id: `thread-${index}`,
+                element: g,
+                paths: allPaths,
+                name: `Thread ${index + 1}`,
+                type: threadType,
+                color: threadColor,
+                strokeWidth: parseFloat(samplePath.getAttribute('stroke-width')) || 2,
+                opacity: parseFloat(samplePath.getAttribute('opacity')) || 1,
+                strokeLinecap: samplePath.getAttribute('stroke-linecap') || 'round',
+                blendMode: 'normal'
+            };
+            
+            threads.push(thread);
+            createThreadControl(thread);
+        });
+    }
+    
+    // Fallback: if no threads found, scan ALL groups recursively
+    if (threads.length === 0) {
+        const allGroups = svg.querySelectorAll('g');
+        const processedPaths = new Set();
         
-        const paths = g.querySelectorAll('path, line, polyline, polygon, rect, circle, ellipse');
-        if (paths.length === 0) return;
-        
-        let samplePath = null;
-        for (const p of paths) {
-            const display = p.getAttribute('display');
-            const visibility = p.getAttribute('visibility');
-            if (display !== 'none' && visibility !== 'hidden') {
-                samplePath = p;
-                break;
+        for (const g of allGroups) {
+            if (isInDefsOrMetadata(g)) continue;
+            if (!isElementVisible(g)) continue;
+            
+            // Only consider groups that are direct children of svg or another group
+            // but NOT groups that only contain other groups (intermediate frame groups)
+            const directPaths = Array.from(g.children).filter(c => {
+                const tag = c.tagName.toLowerCase();
+                return ['path', 'line', 'polyline', 'polygon', 'rect', 'circle', 'ellipse'].includes(tag);
+            });
+            
+            // If this group has direct paths, it might be a frame group
+            // We want to group by the PARENT of these frame groups
+            if (directPaths.length > 0) {
+                const parent = g.parentElement;
+                if (parent && parent.tagName.toLowerCase() === 'g' && !processedPaths.has(parent)) {
+                    const parentPaths = getAllPathsRecursive(parent);
+                    if (parentPaths.length > 0 && !isInDefsOrMetadata(parent)) {
+                        processedPaths.add(parent);
+                        
+                        let samplePath = null;
+                        for (const p of parentPaths) {
+                            if (isElementVisible(p)) {
+                                samplePath = p;
+                                break;
+                            }
+                        }
+                        if (!samplePath) continue;
+                        
+                        const stroke = samplePath.getAttribute('stroke');
+                        const fill = samplePath.getAttribute('fill');
+                        const hasStroke = stroke && stroke !== 'none';
+                        const hasFill = fill && fill !== 'none';
+                        
+                        const thread = {
+                            id: `thread-${threads.length}`,
+                            element: parent,
+                            paths: parentPaths,
+                            name: `Thread ${threads.length + 1}`,
+                            type: hasFill && !hasStroke ? 'fill' : 'line',
+                            color: hasFill && !hasStroke ? fill : (stroke || fill || '#000000'),
+                            strokeWidth: parseFloat(samplePath.getAttribute('stroke-width')) || 2,
+                            opacity: parseFloat(samplePath.getAttribute('opacity')) || 1,
+                            strokeLinecap: samplePath.getAttribute('stroke-linecap') || 'round',
+                            blendMode: 'normal'
+                        };
+                        
+                        threads.push(thread);
+                        createThreadControl(thread);
+                    }
+                }
             }
         }
-        if (!samplePath) return;
-        
-        const stroke = samplePath.getAttribute('stroke');
-        const fill = samplePath.getAttribute('fill');
-        const hasStroke = stroke && stroke !== 'none' && stroke !== 'transparent';
-        const hasFill = fill && fill !== 'none' && fill !== 'transparent';
-        
-        let threadType, threadColor;
-        if (hasFill && !hasStroke) {
-            threadType = 'fill';
-            threadColor = fill;
-        } else if (hasStroke) {
-            threadType = 'line';
-            threadColor = stroke;
-        } else {
-            threadType = 'line';
-            threadColor = stroke || fill || '#000000';
-        }
-        
-        const thread = {
-            id: `thread-${index}`,
-            element: g,
-            paths: Array.from(paths),
-            name: `Thread ${threads.length + 1}`,
-            type: threadType,
-            color: threadColor,
-            strokeWidth: parseFloat(samplePath.getAttribute('stroke-width')) || 1,
-            opacity: parseFloat(samplePath.getAttribute('opacity')) || 1,
-            strokeLinecap: samplePath.getAttribute('stroke-linecap') || 'round',
-            blendMode: samplePath.getAttribute('style')?.includes('mix-blend-mode') ? 
-                samplePath.style.mixBlendMode : 'normal'
-        };
-        
-        threads.push(thread);
-        createThreadControl(thread);
-    });
+    }
     
+    // Ultimate fallback: all visible paths as one thread
     if (threads.length === 0) {
         const allPaths = svg.querySelectorAll('path, line, polyline, polygon, rect, circle, ellipse');
-        const visiblePaths = Array.from(allPaths).filter(p => {
-            const display = p.getAttribute('display');
-            const visibility = p.getAttribute('visibility');
-            return display !== 'none' && visibility !== 'hidden';
-        });
+        const visiblePaths = Array.from(allPaths).filter(p => isElementVisible(p) && !isInDefsOrMetadata(p));
         
         if (visiblePaths.length > 0) {
             const samplePath = visiblePaths[0];
@@ -652,7 +717,7 @@ function extractThreads(svg) {
                 name: 'Main Thread',
                 type: hasFill ? 'fill' : 'line',
                 color: hasFill ? fill : (stroke || '#000000'),
-                strokeWidth: parseFloat(samplePath.getAttribute('stroke-width')) || 1,
+                strokeWidth: parseFloat(samplePath.getAttribute('stroke-width')) || 2,
                 opacity: parseFloat(samplePath.getAttribute('opacity')) || 1,
                 strokeLinecap: samplePath.getAttribute('stroke-linecap') || 'round',
                 blendMode: 'normal'
@@ -662,7 +727,7 @@ function extractThreads(svg) {
         }
     }
     
-    threadCount.textContent = `${threads.length} thread${threads.length !== 1 ? 's' : ''} found`;
+    threadCount.textContent = `${threads.length} thread${threads.length !== 1 ? 's' : ''} detected`;
 }
 
 function createThreadControl(thread) {
@@ -675,7 +740,7 @@ function createThreadControl(thread) {
     card.innerHTML = `
         <div class="thread-header">
             <div class="thread-color-preview" style="background: ${color}" id="preview-${thread.id}"></div>
-            <div class="thread-name">${thread.name}</div>
+            <div class="thread-name">${thread.name} <span style="color:#666;font-size:0.75rem;">(${thread.paths.length} paths)</span></div>
         </div>
         
         <div class="control-group">
@@ -721,19 +786,6 @@ function createThreadControl(thread) {
             <input type="range" min="0" max="1" step="0.05" value="${thread.opacity}"
                    oninput="updateThread('${thread.id}', 'opacity', this.value)">
         </div>
-        
-        <div class="control-group">
-            <label class="control-label">Blend Mode</label>
-            <select onchange="updateThread('${thread.id}', 'blendMode', this.value)">
-                <option value="normal" ${thread.blendMode === 'normal' ? 'selected' : ''}>Normal</option>
-                <option value="multiply" ${thread.blendMode === 'multiply' ? 'selected' : ''}>Multiply</option>
-                <option value="screen" ${thread.blendMode === 'screen' ? 'selected' : ''}>Screen</option>
-                <option value="overlay" ${thread.blendMode === 'overlay' ? 'selected' : ''}>Overlay</option>
-                <option value="darken" ${thread.blendMode === 'darken' ? 'selected' : ''}>Darken</option>
-                <option value="lighten" ${thread.blendMode === 'lighten' ? 'selected' : ''}>Lighten</option>
-                <option value="difference" ${thread.blendMode === 'difference' ? 'selected' : ''}>Difference</option>
-            </select>
-        </div>
     `;
     
     threadsList.appendChild(card);
@@ -761,6 +813,7 @@ function updateThread(threadId, property, value) {
         if (capControl) capControl.style.display = value === 'line' ? 'block' : 'none';
     }
     
+    // Apply styles WITHOUT breaking animations
     applyThreadStyles(thread);
 }
 
@@ -780,17 +833,52 @@ function applyThreadStyles(thread) {
         }
         
         path.setAttribute('opacity', thread.opacity);
-        path.style.mixBlendMode = thread.blendMode === 'normal' ? '' : thread.blendMode;
     });
 }
 
 // ============================================
-// BRUSH PRESET SYSTEM
+// ANIMATION - FIXED: Don't destroy SMIL state
+// ============================================
+
+function togglePlay() {
+    isPlaying = !isPlaying;
+    document.getElementById('playBtn').textContent = isPlaying ? '⏸' : '▶';
+    
+    if (!currentSVG) return;
+    
+    // Use SVG animation control API if available
+    if (currentSVG.pauseAnimations && currentSVG.unpauseAnimations) {
+        if (isPlaying) {
+            currentSVG.unpauseAnimations();
+        } else {
+            currentSVG.pauseAnimations();
+        }
+        return;
+    }
+    
+    // Fallback: toggle CSS animation-play-state on all animated elements
+    const animatedElements = currentSVG.querySelectorAll('animate, animateTransform, animateMotion, [style*="animation"]');
+    animatedElements.forEach(el => {
+        if (isPlaying) {
+            el.style.animationPlayState = 'running';
+        } else {
+            el.style.animationPlayState = 'paused';
+        }
+    });
+}
+
+// ============================================
+// BRUSH PRESETS
 // ============================================
 
 function toggleBrushMenu() {
     document.getElementById('brushMenu').classList.toggle('show');
     document.getElementById('exportMenu').classList.remove('show');
+}
+
+function toggleExport() {
+    document.getElementById('exportMenu').classList.toggle('show');
+    document.getElementById('brushMenu').classList.remove('show');
 }
 
 function saveCurrentBrushes() {
@@ -844,12 +932,10 @@ function applyBrushPreset(preset) {
         return;
     }
     
-    // Match preset brushes to current threads by index
     preset.brushes.forEach((brush, index) => {
         if (index >= threads.length) return;
         const thread = threads[index];
         
-        // Apply each property
         if (brush.type) updateThread(thread.id, 'type', brush.type);
         if (brush.color) updateThread(thread.id, 'color', brush.color);
         if (brush.strokeWidth) updateThread(thread.id, 'strokeWidth', brush.strokeWidth);
@@ -880,6 +966,18 @@ function resetToDefault() {
     });
     
     alert('Reset to original styles!');
+}
+
+function storeOriginalStyles() {
+    originalThreadStyles = threads.map(t => ({
+        id: t.id,
+        type: t.type,
+        color: t.color,
+        strokeWidth: t.strokeWidth,
+        opacity: t.opacity,
+        strokeLinecap: t.strokeLinecap,
+        blendMode: t.blendMode
+    }));
 }
 
 function updateSavedBrushesUI() {
@@ -932,37 +1030,8 @@ function deletePreset(index) {
 }
 
 // ============================================
-// ANIMATION & EXPORT
+// VIEW CONTROLS
 // ============================================
-
-function animateSVG() {
-    animationIntervals.forEach(clearInterval);
-    animationIntervals = [];
-    
-    const animatedElements = currentSVG.querySelectorAll('animate, animateTransform, animateMotion');
-    
-    if (animatedElements.length > 0) {
-        currentSVG.pauseAnimations();
-        if (isPlaying) currentSVG.unpauseAnimations();
-    }
-    
-    currentSVG.style.display = 'none';
-    currentSVG.offsetHeight;
-    currentSVG.style.display = '';
-}
-
-function togglePlay() {
-    isPlaying = !isPlaying;
-    document.getElementById('playBtn').textContent = isPlaying ? '⏸' : '▶';
-    
-    if (currentSVG) {
-        if (isPlaying) {
-            currentSVG.unpauseAnimations?.();
-        } else {
-            currentSVG.pauseAnimations?.();
-        }
-    }
-}
 
 function zoom(delta) {
     zoomLevel = Math.max(0.1, Math.min(3, zoomLevel + delta));
@@ -974,10 +1043,9 @@ function resetView() {
     svgContainer.style.transform = 'scale(1)';
 }
 
-function toggleExport() {
-    document.getElementById('exportMenu').classList.toggle('show');
-    document.getElementById('brushMenu').classList.remove('show');
-}
+// ============================================
+// EXPORT
+// ============================================
 
 function exportSVG() {
     if (!currentSVG) return;
