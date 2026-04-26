@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reeestyle — Looom Brush Editor</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect x='10' y='10' width='35' height='35' rx='8' fill='%2300d4d4'/%3E%3Cpath d='M 18 38 Q 18 18 30 18 Q 38 18 38 28 Q 38 38 28 38 Z' fill='%23ffd1dc'/%3E%3C/svg%3E">
     <style>
         :root {
             --bg: #0f0f13;
@@ -48,6 +47,7 @@
             width: 40px;
             height: 40px;
             flex-shrink: 0;
+            object-fit: contain;
         }
         
         .logo-text {
@@ -83,6 +83,7 @@
         
         .btn:hover { transform: translateY(-1px); filter: brightness(1.1); }
         .btn.secondary { background: var(--panel); border: 1px solid var(--border); }
+        .btn.teal { background: var(--accent2); color: var(--bg); }
         
         #dropZone {
             border: 2px dashed var(--border);
@@ -105,9 +106,10 @@
         #dropZone.hidden { display: none; }
         
         .drop-logo {
-            width: 80px;
-            height: 80px;
+            width: 120px;
+            height: auto;
             margin: 0 auto 1.5rem;
+            display: block;
         }
         
         .main-layout {
@@ -121,7 +123,7 @@
         
         /* Sidebar */
         #sidebar {
-            width: 320px;
+            width: 340px;
             background: var(--panel);
             border-right: 1px solid var(--border);
             overflow-y: auto;
@@ -269,11 +271,11 @@
         
         .hidden { display: none !important; }
         
-        .export-menu {
+        .export-menu, .brush-menu {
             position: relative;
         }
         
-        .export-options {
+        .export-options, .brush-options {
             position: absolute;
             top: 100%;
             right: 0;
@@ -282,14 +284,14 @@
             border: 1px solid var(--border);
             border-radius: 12px;
             padding: 0.5rem;
-            min-width: 200px;
+            min-width: 220px;
             display: none;
             z-index: 100;
         }
         
-        .export-options.show { display: block; }
+        .export-options.show, .brush-options.show { display: block; }
         
-        .export-option {
+        .export-option, .brush-option {
             padding: 0.625rem 1rem;
             border-radius: 8px;
             cursor: pointer;
@@ -297,13 +299,65 @@
             transition: background 0.2s;
         }
         
-        .export-option:hover { background: var(--bg); }
+        .export-option:hover, .brush-option:hover { background: var(--bg); }
         
-        /* Empty state */
-        .empty-state {
-            text-align: center;
+        .brush-option input[type="file"] {
+            display: none;
+        }
+        
+        .thread-count {
             color: #666;
-            padding: 3rem;
+            font-size: 0.8rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .brush-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .brush-actions .btn {
+            flex: 1;
+            font-size: 0.75rem;
+            padding: 0.5rem;
+        }
+        
+        .saved-brushes {
+            margin-bottom: 1rem;
+        }
+        
+        .saved-brush-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+        }
+        
+        .saved-brush-item button {
+            background: none;
+            border: none;
+            color: var(--accent2);
+            cursor: pointer;
+            font-size: 0.75rem;
+        }
+        
+        .saved-brush-item button:hover {
+            color: var(--accent);
+        }
+        
+        .section-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: var(--text);
         }
     </style>
 </head>
@@ -311,15 +365,7 @@
 
 <header>
     <div class="brand">
-        <!-- Reeestyle Logo SVG -->
-        <svg class="logo-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-            <!-- Teal rounded square background -->
-            <rect x="5" y="5" width="45" height="45" rx="10" fill="#00d4d4"/>
-            <!-- Pink brush stroke -->
-            <path d="M 12 42 Q 12 15 28 15 Q 38 15 38 28 Q 38 42 25 42 Z" fill="#ffd1dc"/>
-            <!-- Inner highlight -->
-            <path d="M 15 38 Q 15 18 26 18 Q 32 18 32 28 Q 32 38 22 38 Z" fill="#ffeef2" opacity="0.6"/>
-        </svg>
+        <img src="logo.png" class="logo-icon" alt="Reeestyle" id="headerLogo">
         <div class="logo-text">
             <h1>Reeestyle</h1>
             <div class="subtitle">Looom Brush Editor</div>
@@ -328,6 +374,15 @@
     <div style="display:flex; gap:0.75rem; align-items:center;">
         <input type="file" id="fileInput" accept=".svg" class="hidden">
         <button class="btn secondary" onclick="document.getElementById('fileInput').click()">Open SVG</button>
+        <div class="brush-menu">
+            <button class="btn teal" onclick="toggleBrushMenu()">Brushes ▼</button>
+            <div class="brush-options" id="brushMenu">
+                <div class="brush-option" onclick="saveCurrentBrushes()">💾 Save Brush Preset</div>
+                <div class="brush-option" onclick="document.getElementById('brushFileInput').click()">📁 Load Brush Preset</div>
+                <div class="brush-option" onclick="resetToDefault()">↩️ Reset to Original</div>
+                <input type="file" id="brushFileInput" accept=".json" onchange="loadBrushPreset(event)">
+            </div>
+        </div>
         <div class="export-menu">
             <button class="btn" onclick="toggleExport()">Export ▼</button>
             <div class="export-options" id="exportMenu">
@@ -339,12 +394,7 @@
 </header>
 
 <div id="dropZone">
-    <!-- Large Logo in Drop Zone -->
-    <svg class="drop-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-        <rect x="5" y="5" width="45" height="45" rx="10" fill="#00d4d4"/>
-        <path d="M 12 42 Q 12 15 28 15 Q 38 15 38 28 Q 38 42 25 42 Z" fill="#ffd1dc"/>
-        <path d="M 15 38 Q 15 18 26 18 Q 32 18 32 28 Q 32 38 22 38 Z" fill="#ffeef2" opacity="0.6"/>
-    </svg>
+    <img src="logo.png" class="drop-logo" alt="Reeestyle" id="dropLogo">
     <h2 style="margin-bottom: 0.5rem; font-size: 1.25rem;">Drop your Looom .svg file here</h2>
     <p style="color: #888; font-size: 0.9375rem;">or click to browse</p>
     <p style="color: #555; font-size: 0.8rem; margin-top: 1rem;">
@@ -354,7 +404,14 @@
 
 <div class="main-layout" id="mainLayout">
     <aside id="sidebar">
-        <h2 style="margin-bottom: 1.5rem; font-size: 1.125rem;">Threads</h2>
+        <h2 style="margin-bottom: 0.5rem; font-size: 1.125rem;">Threads</h2>
+        <div class="thread-count" id="threadCount"></div>
+        
+        <div class="saved-brushes" id="savedBrushesContainer" style="display:none;">
+            <div class="section-title">Saved Presets</div>
+            <div id="savedBrushesList"></div>
+        </div>
+        
         <div id="threadsList"></div>
     </aside>
     
@@ -371,18 +428,30 @@
 </div>
 
 <script>
+// ============================================
+// CONFIGURATION - Change your logo filename here
+// ============================================
+const LOGO_FILENAME = 'logo.png';  // <-- Change this to your logo's filename
+
+// Apply logo filename
+document.getElementById('headerLogo').src = LOGO_FILENAME;
+document.getElementById('dropLogo').src = LOGO_FILENAME;
+
 // State
 let currentSVG = null;
 let originalSVG = null;
 let threads = [];
+let originalThreadStyles = []; // Store original styles for reset
 let isPlaying = true;
 let animationIntervals = [];
 let zoomLevel = 1;
+let savedBrushes = JSON.parse(localStorage.getItem('reeestyle_brushes') || '[]');
 
 // DOM Elements
 const dropZone = document.getElementById('dropZone');
 const mainLayout = document.getElementById('mainLayout');
 const threadsList = document.getElementById('threadsList');
+const threadCount = document.getElementById('threadCount');
 const svgContainer = document.getElementById('svgContainer');
 const fileInput = document.getElementById('fileInput');
 
@@ -425,9 +494,15 @@ function loadSVG(file) {
         // Extract threads (groups in Looom SVGs)
         extractThreads(currentSVG);
         
+        // Store original styles for reset
+        storeOriginalStyles();
+        
         // Show editor
         dropZone.classList.add('hidden');
         mainLayout.classList.add('active');
+        
+        // Update saved brushes UI
+        updateSavedBrushesUI();
         
         // Start animation
         animateSVG();
@@ -435,38 +510,116 @@ function loadSVG(file) {
     reader.readAsText(file);
 }
 
+function storeOriginalStyles() {
+    originalThreadStyles = threads.map(t => ({
+        id: t.id,
+        type: t.type,
+        color: t.color,
+        strokeWidth: t.strokeWidth,
+        opacity: t.opacity,
+        strokeLinecap: t.strokeLinecap,
+        blendMode: t.blendMode
+    }));
+}
+
+function isThreadVisible(g) {
+    let el = g;
+    while (el && el.tagName !== 'svg') {
+        const display = el.getAttribute('display');
+        const visibility = el.getAttribute('visibility');
+        const opacity = el.getAttribute('opacity');
+        
+        if (display === 'none' || visibility === 'hidden') return false;
+        if (opacity !== null && parseFloat(opacity) <= 0) return false;
+        
+        const style = el.getAttribute('style') || '';
+        if (style.includes('display:none') || style.includes('visibility:hidden')) return false;
+        if (style.includes('opacity:0') || style.includes('opacity: 0')) return false;
+        
+        el = el.parentElement;
+    }
+    return true;
+}
+
+function hasVisiblePaths(g) {
+    const paths = g.querySelectorAll('path, line, polyline, polygon, rect, circle, ellipse');
+    if (paths.length === 0) return false;
+    
+    for (const path of paths) {
+        const d = path.getAttribute('d');
+        const stroke = path.getAttribute('stroke');
+        const fill = path.getAttribute('fill');
+        const display = path.getAttribute('display');
+        const visibility = path.getAttribute('visibility');
+        
+        if (display === 'none' || visibility === 'hidden') continue;
+        if (path.tagName === 'path' && (!d || d.trim() === '' || d.trim() === 'M0,0')) continue;
+        
+        const hasVisibleStroke = stroke && stroke !== 'none' && stroke !== 'transparent';
+        const hasVisibleFill = fill && fill !== 'none' && fill !== 'transparent';
+        
+        if (!hasVisibleStroke && !hasVisibleFill) continue;
+        
+        const opacity = path.getAttribute('opacity');
+        if (opacity !== null && parseFloat(opacity) <= 0) continue;
+        
+        return true;
+    }
+    return false;
+}
+
 function extractThreads(svg) {
     threads = [];
     threadsList.innerHTML = '';
     
-    // Looom typically organizes threads as <g> elements
-    // Each thread contains paths with specific stroke/fill properties
     const groups = svg.querySelectorAll('g');
     
     groups.forEach((g, index) => {
-        // Skip empty groups or defs
-        if (g.closest('defs')) return;
+        if (g.closest('defs') || g.closest('metadata') || g.closest('title')) return;
+        if (!isThreadVisible(g)) return;
+        if (!hasVisiblePaths(g)) return;
+        
+        const childGroups = g.querySelectorAll(':scope > g');
+        if (childGroups.length > 0) return;
         
         const paths = g.querySelectorAll('path, line, polyline, polygon, rect, circle, ellipse');
         if (paths.length === 0) return;
         
-        // Detect current properties from first path
-        const samplePath = paths[0];
-        const style = window.getComputedStyle(samplePath);
+        let samplePath = null;
+        for (const p of paths) {
+            const display = p.getAttribute('display');
+            const visibility = p.getAttribute('visibility');
+            if (display !== 'none' && visibility !== 'hidden') {
+                samplePath = p;
+                break;
+            }
+        }
+        if (!samplePath) return;
         
-        // Determine if this is a line or fill thread
-        const hasStroke = samplePath.getAttribute('stroke') !== 'none' && samplePath.getAttribute('stroke');
-        const hasFill = samplePath.getAttribute('fill') !== 'none' && samplePath.getAttribute('fill');
+        const stroke = samplePath.getAttribute('stroke');
+        const fill = samplePath.getAttribute('fill');
+        const hasStroke = stroke && stroke !== 'none' && stroke !== 'transparent';
+        const hasFill = fill && fill !== 'none' && fill !== 'transparent';
+        
+        let threadType, threadColor;
+        if (hasFill && !hasStroke) {
+            threadType = 'fill';
+            threadColor = fill;
+        } else if (hasStroke) {
+            threadType = 'line';
+            threadColor = stroke;
+        } else {
+            threadType = 'line';
+            threadColor = stroke || fill || '#000000';
+        }
         
         const thread = {
             id: `thread-${index}`,
             element: g,
             paths: Array.from(paths),
             name: `Thread ${threads.length + 1}`,
-            type: hasFill ? 'fill' : 'line',
-            color: hasFill ? 
-                (samplePath.getAttribute('fill') || style.fill) : 
-                (samplePath.getAttribute('stroke') || style.stroke),
+            type: threadType,
+            color: threadColor,
             strokeWidth: parseFloat(samplePath.getAttribute('stroke-width')) || 1,
             opacity: parseFloat(samplePath.getAttribute('opacity')) || 1,
             strokeLinecap: samplePath.getAttribute('stroke-linecap') || 'round',
@@ -478,26 +631,38 @@ function extractThreads(svg) {
         createThreadControl(thread);
     });
     
-    // If no groups found, treat all paths as one thread
     if (threads.length === 0) {
         const allPaths = svg.querySelectorAll('path, line, polyline, polygon, rect, circle, ellipse');
-        if (allPaths.length > 0) {
+        const visiblePaths = Array.from(allPaths).filter(p => {
+            const display = p.getAttribute('display');
+            const visibility = p.getAttribute('visibility');
+            return display !== 'none' && visibility !== 'hidden';
+        });
+        
+        if (visiblePaths.length > 0) {
+            const samplePath = visiblePaths[0];
+            const stroke = samplePath.getAttribute('stroke');
+            const fill = samplePath.getAttribute('fill');
+            const hasFill = fill && fill !== 'none';
+            
             const thread = {
                 id: 'thread-0',
                 element: svg,
-                paths: Array.from(allPaths),
+                paths: visiblePaths,
                 name: 'Main Thread',
-                type: 'line',
-                color: '#000000',
-                strokeWidth: 2,
-                opacity: 1,
-                strokeLinecap: 'round',
+                type: hasFill ? 'fill' : 'line',
+                color: hasFill ? fill : (stroke || '#000000'),
+                strokeWidth: parseFloat(samplePath.getAttribute('stroke-width')) || 1,
+                opacity: parseFloat(samplePath.getAttribute('opacity')) || 1,
+                strokeLinecap: samplePath.getAttribute('stroke-linecap') || 'round',
                 blendMode: 'normal'
             };
             threads.push(thread);
             createThreadControl(thread);
         }
     }
+    
+    threadCount.textContent = `${threads.length} thread${threads.length !== 1 ? 's' : ''} found`;
 }
 
 function createThreadControl(thread) {
@@ -580,7 +745,6 @@ function updateThread(threadId, property, value) {
     
     thread[property] = value;
     
-    // Update UI displays
     if (property === 'strokeWidth') {
         document.getElementById(`width-val-${threadId}`).textContent = value + 'px';
     } else if (property === 'opacity') {
@@ -590,7 +754,6 @@ function updateThread(threadId, property, value) {
         document.getElementById(`preview-${threadId}`).style.background = value;
     }
     
-    // Toggle controls visibility based on type
     if (property === 'type') {
         const widthControl = document.getElementById(`width-control-${threadId}`);
         const capControl = document.getElementById(`cap-control-${threadId}`);
@@ -598,7 +761,6 @@ function updateThread(threadId, property, value) {
         if (capControl) capControl.style.display = value === 'line' ? 'block' : 'none';
     }
     
-    // Apply to SVG elements
     applyThreadStyles(thread);
 }
 
@@ -622,26 +784,170 @@ function applyThreadStyles(thread) {
     });
 }
 
-// Animation handling for Looom's frame-based SVG structure
+// ============================================
+// BRUSH PRESET SYSTEM
+// ============================================
+
+function toggleBrushMenu() {
+    document.getElementById('brushMenu').classList.toggle('show');
+    document.getElementById('exportMenu').classList.remove('show');
+}
+
+function saveCurrentBrushes() {
+    if (threads.length === 0) {
+        alert('Open a Looom SVG first!');
+        return;
+    }
+    
+    const presetName = prompt('Name your brush preset:', 'My Brush Set');
+    if (!presetName) return;
+    
+    const preset = {
+        name: presetName,
+        date: new Date().toISOString(),
+        brushes: threads.map(t => ({
+            name: t.name,
+            type: t.type,
+            color: t.color,
+            strokeWidth: t.strokeWidth,
+            opacity: t.opacity,
+            strokeLinecap: t.strokeLinecap,
+            blendMode: t.blendMode
+        }))
+    };
+    
+    savedBrushes.push(preset);
+    localStorage.setItem('reeestyle_brushes', JSON.stringify(savedBrushes));
+    updateSavedBrushesUI();
+    alert(`Saved "${presetName}" with ${preset.brushes.length} threads!`);
+}
+
+function loadBrushPreset(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const preset = JSON.parse(e.target.result);
+            applyBrushPreset(preset);
+        } catch (err) {
+            alert('Invalid brush preset file');
+        }
+    };
+    reader.readAsText(file);
+}
+
+function applyBrushPreset(preset) {
+    if (!preset.brushes || !Array.isArray(preset.brushes)) {
+        alert('Invalid preset format');
+        return;
+    }
+    
+    // Match preset brushes to current threads by index
+    preset.brushes.forEach((brush, index) => {
+        if (index >= threads.length) return;
+        const thread = threads[index];
+        
+        // Apply each property
+        if (brush.type) updateThread(thread.id, 'type', brush.type);
+        if (brush.color) updateThread(thread.id, 'color', brush.color);
+        if (brush.strokeWidth) updateThread(thread.id, 'strokeWidth', brush.strokeWidth);
+        if (brush.opacity !== undefined) updateThread(thread.id, 'opacity', brush.opacity);
+        if (brush.strokeLinecap) updateThread(thread.id, 'strokeLinecap', brush.strokeLinecap);
+        if (brush.blendMode) updateThread(thread.id, 'blendMode', brush.blendMode);
+    });
+    
+    alert(`Applied "${preset.name}"!`);
+}
+
+function resetToDefault() {
+    if (originalThreadStyles.length === 0) {
+        alert('No original styles stored. Re-open the SVG to reset.');
+        return;
+    }
+    
+    originalThreadStyles.forEach(style => {
+        const thread = threads.find(t => t.id === style.id);
+        if (!thread) return;
+        
+        updateThread(thread.id, 'type', style.type);
+        updateThread(thread.id, 'color', style.color);
+        updateThread(thread.id, 'strokeWidth', style.strokeWidth);
+        updateThread(thread.id, 'opacity', style.opacity);
+        updateThread(thread.id, 'strokeLinecap', style.strokeLinecap);
+        updateThread(thread.id, 'blendMode', style.blendMode);
+    });
+    
+    alert('Reset to original styles!');
+}
+
+function updateSavedBrushesUI() {
+    const container = document.getElementById('savedBrushesContainer');
+    const list = document.getElementById('savedBrushesList');
+    
+    if (savedBrushes.length === 0) {
+        container.style.display = 'none';
+        return;
+    }
+    
+    container.style.display = 'block';
+    list.innerHTML = '';
+    
+    savedBrushes.forEach((preset, index) => {
+        const item = document.createElement('div');
+        item.className = 'saved-brush-item';
+        item.innerHTML = `
+            <span>${preset.name} (${preset.brushes.length} threads)</span>
+            <div>
+                <button onclick="downloadPreset(${index})">💾</button>
+                <button onclick="applySavedPreset(${index})">Apply</button>
+                <button onclick="deletePreset(${index})">🗑</button>
+            </div>
+        `;
+        list.appendChild(item);
+    });
+}
+
+function downloadPreset(index) {
+    const preset = savedBrushes[index];
+    const blob = new Blob([JSON.stringify(preset, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `reeestyle-${preset.name.replace(/\s+/g, '-').toLowerCase()}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+}
+
+function applySavedPreset(index) {
+    applyBrushPreset(savedBrushes[index]);
+}
+
+function deletePreset(index) {
+    if (!confirm('Delete this preset?')) return;
+    savedBrushes.splice(index, 1);
+    localStorage.setItem('reeestyle_brushes', JSON.stringify(savedBrushes));
+    updateSavedBrushesUI();
+}
+
+// ============================================
+// ANIMATION & EXPORT
+// ============================================
+
 function animateSVG() {
-    // Clear existing intervals
     animationIntervals.forEach(clearInterval);
     animationIntervals = [];
     
-    // Looom SVGs may contain SMIL animations or sequential frames
-    // This handles basic frame visibility toggling if present
     const animatedElements = currentSVG.querySelectorAll('animate, animateTransform, animateMotion');
     
     if (animatedElements.length > 0) {
-        // SMIL animations are native, but we can control timing
         currentSVG.pauseAnimations();
         if (isPlaying) currentSVG.unpauseAnimations();
     }
     
-    // Alternative: Some Looom exports use CSS animations or frame groups
-    // Force repaint to ensure styles apply
     currentSVG.style.display = 'none';
-    currentSVG.offsetHeight; // Trigger reflow
+    currentSVG.offsetHeight;
     currentSVG.style.display = '';
 }
 
@@ -668,9 +974,9 @@ function resetView() {
     svgContainer.style.transform = 'scale(1)';
 }
 
-// Export functions
 function toggleExport() {
     document.getElementById('exportMenu').classList.toggle('show');
+    document.getElementById('brushMenu').classList.remove('show');
 }
 
 function exportSVG() {
@@ -698,9 +1004,8 @@ function exportPNG() {
     const ctx = canvas.getContext('2d');
     const img = new Image();
     
-    // Get SVG dimensions
     const rect = currentSVG.getBoundingClientRect();
-    canvas.width = rect.width * 2; // High DPI
+    canvas.width = rect.width * 2;
     canvas.height = rect.height * 2;
     
     img.onload = () => {
@@ -723,7 +1028,6 @@ function rgbToHex(color) {
     if (!color || color === 'none') return '#000000';
     if (color.startsWith('#')) return color;
     
-    // Handle rgb(r, g, b)
     const rgb = color.match(/\d+/g);
     if (rgb) {
         return '#' + rgb.map(x => {
@@ -734,10 +1038,13 @@ function rgbToHex(color) {
     return '#000000';
 }
 
-// Close export menu when clicking outside
+// Close menus when clicking outside
 document.addEventListener('click', (e) => {
     if (!e.target.closest('.export-menu')) {
         document.getElementById('exportMenu').classList.remove('show');
+    }
+    if (!e.target.closest('.brush-menu')) {
+        document.getElementById('brushMenu').classList.remove('show');
     }
 });
 </script>
