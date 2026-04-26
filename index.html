@@ -3,16 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reeestyle — Looom Brush Editor</title>
-    <link rel="icon" type="image/png" href="logo.png">
+    <title>Reeestyle</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+    <link rel="apple-touch-icon" href="logo.png">
     <style>
         :root {
-            --bg: #0f0f13;
-            --panel: #1a1a22;
-            --text: #e0e0e0;
-            --accent: #ff6b6b;
+            --bg: #d4d4d4;
+            --card-bg: #c8c8c8;
+            --text: #333333;
+            --text-light: #888888;
+            --accent: #e94560;
             --accent2: #00d4d4;
-            --border: #2a2a35;
+            --btn-bg: #b8b8b8;
+            --btn-hover: #a8a8a8;
+            --border: #bbbbbb;
+            --panel-bg: rgba(212, 212, 212, 0.95);
+            --loom-logo: #999999;
         }
         
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -22,156 +29,407 @@
             background: var(--bg);
             color: var(--text);
             min-height: 100vh;
-            display: flex;
-            flex-direction: column;
+            overflow: hidden;
         }
         
-        header {
-            padding: 1rem 2rem;
-            border-bottom: 1px solid var(--border);
+        /* ==================== */
+        /* LOOOM-STYLE TOP BAR  */
+        /* ==================== */
+        .top-bar {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: 60px;
             display: flex;
+            align-items: center;
             justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 1rem;
+            padding: 0 20px;
+            z-index: 1000;
+            background: var(--bg);
         }
         
-        .brand {
+        .top-left {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        
+        .loom-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            border: none;
+            background: var(--btn-bg);
+            color: var(--text);
+            cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 0.75rem;
+            justify-content: center;
+            font-size: 1.2rem;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+            padding: 0;
         }
         
-        .logo-icon {
-            width: 40px;
-            height: 40px;
-            flex-shrink: 0;
+        .loom-btn img {
+            width: 20px;
+            height: 20px;
             object-fit: contain;
         }
         
-        .logo-text {
-            display: flex;
-            flex-direction: column;
+        .loom-btn:hover {
+            background: var(--btn-hover);
+            transform: translateY(-1px);
         }
         
-        h1 {
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: var(--text);
-            letter-spacing: -0.02em;
+        .loom-btn:active {
+            transform: translateY(0);
         }
         
-        .subtitle {
-            color: #888;
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
+        /* Looom logo text style */
+        .loom-logo-text {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--loom-logo);
+            letter-spacing: -0.05em;
+            font-family: 'Comic Sans MS', 'Chalkboard SE', sans-serif;
+            user-select: none;
         }
         
-        .btn {
-            background: var(--accent);
-            color: white;
-            border: none;
-            padding: 0.625rem 1.25rem;
-            border-radius: 8px;
+        .loom-logo-text span {
+            display: inline-block;
+            transform: rotate(-5deg);
+        }
+        
+        .loom-logo-text span:nth-child(2) { transform: rotate(3deg) translateY(-2px); }
+        .loom-logo-text span:nth-child(3) { transform: rotate(-3deg) translateY(1px); }
+        .loom-logo-text span:nth-child(4) { transform: rotate(5deg) translateY(-1px); }
+        .loom-logo-text span:nth-child(5) { transform: rotate(-2deg) translateY(2px); }
+        .loom-logo-text span:nth-child(6) { transform: rotate(4deg) translateY(-2px); }
+        .loom-logo-text span:nth-child(7) { transform: rotate(-4deg); }
+        .loom-logo-text span:nth-child(8) { transform: rotate(2deg) translateY(1px); }
+        .loom-logo-text span:nth-child(9) { transform: rotate(-3deg) translateY(-1px); }
+        
+        /* ==================== */
+        /* PROJECT GRID (LOOOM) */
+        /* ==================== */
+        .project-grid {
+            position: fixed;
+            top: 60px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            padding: 30px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            grid-auto-rows: min-content;
+            gap: 20px;
+            overflow-y: auto;
+            align-content: start;
+        }
+        
+        .project-card {
+            background: var(--card-bg);
+            border-radius: 24px;
+            overflow: hidden;
             cursor: pointer;
-            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            position: relative;
+        }
+        
+        .project-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+        }
+        
+        .project-card.active {
+            box-shadow: 0 0 0 3px var(--accent2);
+        }
+        
+        .card-preview {
+            aspect-ratio: 4/3;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .card-preview svg {
+            max-width: 90%;
+            max-height: 90%;
+        }
+        
+        .card-preview .drop-hint {
+            text-align: center;
+            color: #aaa;
+        }
+        
+        .card-preview .drop-hint .files-icon {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 0.5rem;
+            object-fit: contain;
+        }
+        
+        .card-info {
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .card-name {
+            font-size: 0.9rem;
+            color: var(--text-light);
+            font-weight: 500;
+        }
+        
+        .card-actions {
+            display: flex;
+            gap: 6px;
+        }
+        
+        .card-action-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             font-size: 0.875rem;
+            opacity: 0;
             transition: all 0.2s;
         }
         
-        .btn:hover { transform: translateY(-1px); filter: brightness(1.1); }
-        .btn.secondary { background: var(--panel); border: 1px solid var(--border); }
-        .btn.teal { background: var(--accent2); color: var(--bg); }
-        
-        #dropZone {
-            border: 2px dashed var(--border);
-            border-radius: 16px;
-            margin: 2rem auto;
-            padding: 3rem;
-            text-align: center;
-            transition: all 0.3s;
-            cursor: pointer;
-            background: rgba(255,255,255,0.02);
-            max-width: 500px;
-            width: 90%;
+        .project-card:hover .card-action-btn {
+            opacity: 1;
+            background: var(--btn-bg);
         }
         
-        #dropZone.dragover {
-            border-color: var(--accent2);
-            background: rgba(0, 212, 212, 0.05);
+        .card-action-btn:hover {
+            background: var(--accent) !important;
+            color: white;
         }
         
-        #dropZone.hidden { display: none; }
+        /* Progress bar like Looom */
+        .progress-bar {
+            height: 4px;
+            background: var(--btn-bg);
+            margin: 0 16px 12px;
+            border-radius: 2px;
+            overflow: hidden;
+        }
         
-        .drop-logo {
-            width: 120px;
-            height: auto;
-            margin: 0 auto 1.5rem;
+        .progress-fill {
+            height: 100%;
+            background: var(--accent2);
+            border-radius: 2px;
+            transition: width 0.3s;
+        }
+        
+        /* ==================== */
+        /* EDITOR VIEW          */
+        /* ==================== */
+        .editor-view {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: var(--bg);
+            z-index: 2000;
+        }
+        
+        .editor-view.active {
             display: block;
         }
         
-        .main-layout {
-            display: none;
-            flex: 1;
-            gap: 0;
-            height: calc(100vh - 72px);
-        }
-        
-        .main-layout.active { display: flex; }
-        
-        #sidebar {
-            width: 340px;
-            background: var(--panel);
-            border-right: 1px solid var(--border);
-            overflow-y: auto;
-            padding: 1.5rem;
-        }
-        
-        .thread-card {
-            background: var(--bg);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 1.25rem;
-            margin-bottom: 1rem;
-            transition: border-color 0.2s;
-        }
-        
-        .thread-card:hover { border-color: var(--accent2); }
-        
-        .thread-header {
+        .editor-top {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: 60px;
             display: flex;
             align-items: center;
-            gap: 0.75rem;
-            margin-bottom: 1rem;
-            padding-bottom: 0.75rem;
+            justify-content: space-between;
+            padding: 0 20px;
+            background: var(--bg);
+            z-index: 100;
+        }
+        
+        .editor-canvas {
+            position: fixed;
+            top: 60px;
+            left: 80px;
+            right: 320px;
+            bottom: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        #svgContainer {
+            max-width: 100%;
+            max-height: 100%;
+            border-radius: 16px;
+            overflow: hidden;
+            background: white;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+        }
+        
+        #svgContainer svg {
+            display: block;
+            max-width: 100%;
+            max-height: 100%;
+        }
+        
+        /* Thread wheel (left) */
+        .thread-wheel {
+            position: fixed;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 50;
+        }
+        
+        .thread-dot {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: 3px solid white;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            position: relative;
+        }
+        
+        .thread-dot:hover {
+            transform: scale(1.15);
+        }
+        
+        .thread-dot.active {
+            box-shadow: 0 0 0 4px var(--accent2), 0 2px 8px rgba(0,0,0,0.2);
+            transform: scale(1.1);
+        }
+        
+        .thread-dot .thread-label {
+            position: absolute;
+            left: 50%;
+            bottom: -18px;
+            transform: translateX(-50%);
+            font-size: 0.65rem;
+            color: var(--text-light);
+            white-space: nowrap;
+            font-weight: 600;
+        }
+        
+        /* Brush panel (right) */
+        .brush-panel {
+            position: fixed;
+            right: 20px;
+            top: 80px;
+            width: 280px;
+            background: rgba(255,255,255,0.9);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 20px;
+            z-index: 50;
+            max-height: calc(100vh - 180px);
+            overflow-y: auto;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+        }
+        
+        .panel-title {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .panel-section {
+            margin-bottom: 20px;
+            padding-bottom: 16px;
             border-bottom: 1px solid var(--border);
         }
         
-        .thread-color-preview {
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            border: 2px solid var(--border);
-            flex-shrink: 0;
+        .panel-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
         }
         
-        .thread-name {
+        .section-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-light);
+            margin-bottom: 10px;
             font-weight: 600;
-            font-size: 0.9375rem;
+        }
+        
+        .preset-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+        
+        .preset-swatch {
+            aspect-ratio: 1;
+            border-radius: 12px;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .preset-swatch:hover {
+            transform: scale(1.08);
+            border-color: var(--accent2);
+        }
+        
+        .preset-swatch::after {
+            content: attr(data-name);
+            position: absolute;
+            bottom: 2px;
+            left: 2px;
+            right: 2px;
+            font-size: 0.6rem;
+            text-align: center;
+            background: rgba(0,0,0,0.5);
+            color: white;
+            border-radius: 4px;
+            padding: 1px 0;
         }
         
         .control-group {
-            margin-bottom: 1rem;
+            margin-bottom: 12px;
         }
         
         .control-label {
             display: block;
             font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: #888;
-            margin-bottom: 0.5rem;
+            color: var(--text-light);
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+        
+        input[type="color"] {
+            width: 100%;
+            height: 40px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            cursor: pointer;
         }
         
         input[type="range"] {
@@ -179,316 +437,272 @@
             accent-color: var(--accent2);
         }
         
-        input[type="color"] {
-            width: 100%;
-            height: 40px;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            background: var(--bg);
-            cursor: pointer;
-        }
-        
         select {
             width: 100%;
-            padding: 0.5rem;
-            background: var(--bg);
-            border: 1px solid var(--border);
-            color: var(--text);
-            border-radius: 8px;
+            padding: 8px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            background: white;
             font-size: 0.875rem;
         }
         
-        .value-display {
+        .value-badge {
             float: right;
-            color: var(--accent2);
+            background: var(--accent2);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.75rem;
             font-weight: 600;
         }
         
-        #canvasArea {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 2rem;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        #svgContainer {
-            max-width: 100%;
-            max-height: 100%;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-            border-radius: 12px;
-            overflow: hidden;
-            background: white;
-        }
-        
-        #svgContainer svg {
-            display: block;
-            max-width: 100%;
-            max-height: 80vh;
-        }
-        
-        .playback-controls {
-            position: absolute;
-            bottom: 2rem;
+        /* Bottom playback */
+        .playback-bar {
+            position: fixed;
+            bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
             display: flex;
-            gap: 0.75rem;
-            background: rgba(26, 26, 34, 0.9);
-            padding: 0.75rem 1.5rem;
-            border-radius: 50px;
-            border: 1px solid var(--border);
-            backdrop-filter: blur(10px);
-        }
-        
-        .icon-btn {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            border: 1px solid var(--border);
-            background: var(--bg);
-            color: var(--text);
-            cursor: pointer;
-            display: flex;
             align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-            font-size: 1rem;
+            gap: 8px;
+            background: rgba(255,255,255,0.9);
+            backdrop-filter: blur(20px);
+            padding: 10px 24px;
+            border-radius: 16px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            z-index: 50;
         }
         
-        .icon-btn:hover { background: var(--accent2); color: var(--bg); }
-        .icon-btn.active { background: var(--accent2); color: var(--bg); }
-        
-        .hidden { display: none !important; }
-        
-        .export-menu, .brush-menu {
-            position: relative;
-        }
-        
-        .export-options, .brush-options {
-            position: absolute;
-            top: 100%;
-            right: 0;
-            margin-top: 0.5rem;
-            background: var(--panel);
-            border: 1px solid var(--border);
+        .playback-bar .loom-btn {
+            width: 44px;
+            height: 44px;
             border-radius: 12px;
-            padding: 0.5rem;
-            min-width: 240px;
-            display: none;
-            z-index: 100;
         }
         
-        .export-options.show, .brush-options.show { display: block; }
-        
-        .export-option, .brush-option {
-            padding: 0.625rem 1rem;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.875rem;
-            transition: background 0.2s;
+        .playback-bar .loom-btn.active {
+            background: var(--accent2);
+            color: white;
         }
         
-        .export-option:hover, .brush-option:hover { background: var(--bg); }
-        
-        .brush-option input[type="file"] {
-            display: none;
-        }
-        
-        .brush-option small {
-            display: block;
-            color: #666;
-            font-size: 0.7rem;
-            margin-top: 0.25rem;
-        }
-        
-        .thread-count {
-            color: #666;
+        .frame-display {
+            font-family: 'SF Mono', monospace;
             font-size: 0.8rem;
-            margin-bottom: 1rem;
-            padding-bottom: 0.5rem;
-            border-bottom: 1px solid var(--border);
+            color: var(--text-light);
+            min-width: 60px;
+            text-align: center;
         }
         
-        .debug-info {
-            color: #555;
+        /* Format info */
+        .format-info {
             font-size: 0.7rem;
-            margin-top: 0.5rem;
-            font-family: monospace;
-        }
-        
-        .saved-brushes {
-            margin-bottom: 1rem;
-        }
-        
-        .saved-brush-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0.5rem;
+            color: var(--text-light);
+            line-height: 1.5;
             background: var(--bg);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            margin-bottom: 0.5rem;
-            font-size: 0.875rem;
+            padding: 10px;
+            border-radius: 10px;
         }
         
-        .saved-brush-item button {
-            background: none;
-            border: none;
-            color: var(--accent2);
-            cursor: pointer;
-            font-size: 0.75rem;
-        }
-        
-        .saved-brush-item button:hover {
-            color: var(--accent);
-        }
-        
-        .section-title {
-            font-size: 0.875rem;
-            font-weight: 600;
-            margin-bottom: 0.75rem;
-            color: var(--text);
-        }
-        
-        .file-format-info {
-            background: var(--bg);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 0.75rem;
-            margin-top: 0.5rem;
-            font-size: 0.75rem;
-            color: #888;
-        }
-        
-        .file-format-info code {
-            background: #2a2a35;
-            padding: 0.125rem 0.375rem;
+        .format-info code {
+            background: white;
+            padding: 1px 6px;
             border-radius: 4px;
             color: var(--accent2);
             font-family: monospace;
+            font-size: 0.75rem;
         }
+        
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
-<header>
-    <div class="brand">
-        <img src="logo.png" class="logo-icon" alt="Reeestyle" id="headerLogo">
-        <div class="logo-text">
-            <h1>Reeestyle</h1>
-            <div class="subtitle">Looom Brush Editor</div>
+<!-- ==================== -->
+<!-- PROJECT GRID VIEW    -->
+<!-- ==================== -->
+<div id="gridView">
+    <div class="top-bar">
+        <div class="top-left">
+            <button class="loom-btn" onclick="createNewProject()" title="New">+</button>
+            <button class="loom-btn" onclick="document.getElementById('fileInput').click()" title="Open">
+                <img src="files-icon.png" alt="Files">
+            </button>
+            <input type="file" id="fileInput" accept=".svg" class="hidden" onchange="loadSVGFile(event)">
+            <button class="loom-btn" onclick="clearAllProjects()" title="Clear All">✕</button>
         </div>
+        
+        <div class="loom-logo-text">
+            <span>r</span><span>e</span><span>e</span><span>e</span><span>s</span><span>t</span><span>y</span><span>l</span><span>e</span>
+        </div>
+        
+        <div></div>
     </div>
-    <div style="display:flex; gap:0.75rem; align-items:center;">
-        <input type="file" id="fileInput" accept=".svg" class="hidden">
-        <button class="btn secondary" onclick="document.getElementById('fileInput').click()">Open SVG</button>
-        <div class="brush-menu">
-            <button class="btn teal" onclick="toggleBrushMenu()">Brushes ▼</button>
-            <div class="brush-options" id="brushMenu">
-                <div class="brush-option" onclick="saveCurrentBrushes()">
-                    💾 Save Brush Preset
-                    <small>Saves as .json file</small>
+    
+    <div class="project-grid" id="projectGrid">
+        <!-- Drop zone card -->
+        <div class="project-card" onclick="document.getElementById('fileInput').click()">
+            <div class="card-preview" style="background: #e8e8e8;">
+                <div class="drop-hint">
+                    <img src="files-icon.png" class="files-icon" alt="Import">
+                    <div style="font-size: 0.875rem; color: #999;">Drop SVG here</div>
                 </div>
-                <div class="brush-option" onclick="document.getElementById('brushFileInput').click()">
-                    📁 Load Brush Preset
-                    <small>Accepts .json files only</small>
-                </div>
-                <div class="brush-option" onclick="resetToDefault()">↩️ Reset to Original</div>
-                <input type="file" id="brushFileInput" accept=".json,application/json" onchange="loadBrushPreset(event)">
+            </div>
+            <div class="card-info">
+                <span class="card-name">Import Looom SVG</span>
             </div>
         </div>
-        <div class="export-menu">
-            <button class="btn" onclick="toggleExport()">Export ▼</button>
-            <div class="export-options" id="exportMenu">
-                <div class="export-option" onclick="exportSVG()">📄 Download SVG</div>
-                <div class="export-option" onclick="exportPNG()">🖼️ Download PNG</div>
-            </div>
-        </div>
     </div>
-</header>
-
-<div id="dropZone">
-    <img src="logo.png" class="drop-logo" alt="Reeestyle" id="dropLogo">
-    <h2 style="margin-bottom: 0.5rem; font-size: 1.25rem;">Drop your Looom .svg file here</h2>
-    <p style="color: #888; font-size: 0.9375rem;">or click to browse</p>
-    <p style="color: #555; font-size: 0.8rem; margin-top: 1rem;">
-        Find your Looom files in the Files app on iPad, or export from Looom
-    </p>
 </div>
 
-<div class="main-layout" id="mainLayout">
-    <aside id="sidebar">
-        <h2 style="margin-bottom: 0.5rem; font-size: 1.125rem;">Threads</h2>
-        <div class="thread-count" id="threadCount"></div>
-        
-        <div class="saved-brushes" id="savedBrushesContainer" style="display:none;">
-            <div class="section-title">Saved Presets</div>
-            <div id="savedBrushesList"></div>
+<!-- ==================== -->
+<!-- EDITOR VIEW          -->
+<!-- ==================== -->
+<div class="editor-view" id="editorView">
+    <div class="editor-top">
+        <div class="top-left">
+            <button class="loom-btn" onclick="backToGrid()" title="Back">←</button>
+            <button class="loom-btn" onclick="saveCurrentBrushes()" title="Save Preset">💾</button>
+            <button class="loom-btn" onclick="document.getElementById('brushFileInput').click()" title="Load Preset">📂</button>
+            <input type="file" id="brushFileInput" accept=".json,application/json" class="hidden" onchange="loadBrushPreset(event)">
         </div>
         
-        <div id="threadsList"></div>
-        
-        <div class="file-format-info">
-            <strong>Brush Preset Format</strong><br>
-            Save & load brush settings as <code>.json</code> files.<br><br>
-            Each preset contains color, stroke width, opacity, line cap, and blend mode for each thread. Share presets with other Reeestyle users!
+        <div class="loom-logo-text" style="font-size: 1.5rem;">
+            <span>r</span><span>e</span><span>e</span><span>e</span><span>s</span><span>t</span><span>y</span><span>l</span><span>e</span>
         </div>
-    </aside>
+        
+        <div class="top-left">
+            <button class="loom-btn" onclick="exportSVG()" title="Export SVG">📄</button>
+            <button class="loom-btn" onclick="exportPNG()" title="Export PNG">🖼️</button>
+        </div>
+    </div>
     
-    <main id="canvasArea">
+    <!-- Thread wheel -->
+    <div class="thread-wheel" id="threadWheel"></div>
+    
+    <!-- Canvas -->
+    <div class="editor-canvas">
         <div id="svgContainer"></div>
-        
-        <div class="playback-controls">
-            <button class="icon-btn" onclick="togglePlay()" id="playBtn" title="Play/Pause">⏸</button>
-            <button class="icon-btn" onclick="resetView()" title="Reset View">⟲</button>
-            <button class="icon-btn" onclick="zoom(-0.1)" title="Zoom Out">−</button>
-            <button class="icon-btn" onclick="zoom(0.1)" title="Zoom In">+</button>
+    </div>
+    
+    <!-- Brush panel -->
+    <div class="brush-panel" id="brushPanel">
+        <div class="panel-title">
+            <span>🎨 Brushes</span>
         </div>
-    </main>
+        
+        <div class="panel-section">
+            <div class="section-label">Preinstalled</div>
+            <div class="preset-grid" id="presetGrid"></div>
+        </div>
+        
+        <div class="panel-section" id="threadControls">
+            <div class="section-label">Thread Settings</div>
+            <div id="activeThreadName" style="font-size: 0.875rem; margin-bottom: 12px; color: var(--accent2); font-weight: 600;">Select a thread</div>
+            
+            <div class="control-group">
+                <label class="control-label">Type</label>
+                <select id="brushType" onchange="updateActiveThread('type', this.value)">
+                    <option value="line">✏️ Line</option>
+                    <option value="fill">🎨 Fill</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label class="control-label">Color</label>
+                <input type="color" id="brushColor" oninput="updateActiveThread('color', this.value)">
+            </div>
+            
+            <div class="control-group" id="widthControl">
+                <label class="control-label">
+                    Width
+                    <span class="value-badge" id="widthDisplay">2px</span>
+                </label>
+                <input type="range" id="brushWidth" min="0.5" max="50" step="0.5" value="2" oninput="updateActiveThread('strokeWidth', this.value)">
+            </div>
+            
+            <div class="control-group" id="capControl">
+                <label class="control-label">Cap</label>
+                <select id="brushCap" onchange="updateActiveThread('strokeLinecap', this.value)">
+                    <option value="round">Round</option>
+                    <option value="butt">Butt</option>
+                    <option value="square">Square</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label class="control-label">
+                    Opacity
+                    <span class="value-badge" id="opacityDisplay">100%</span>
+                </label>
+                <input type="range" id="brushOpacity" min="0" max="1" step="0.05" value="1" oninput="updateActiveThread('opacity', this.value)">
+            </div>
+        </div>
+        
+        <div class="panel-section">
+            <div class="format-info">
+                <strong>Brush Preset Format</strong><br>
+                Save & load as <code>.json</code> files.<br>
+                Contains color, width, opacity, and cap settings per thread. Share with other Reeestyle users!
+            </div>
+        </div>
+    </div>
+    
+    <!-- Playback -->
+    <div class="playback-bar">
+        <button class="loom-btn" onclick="goToStart()" title="Start">⏮</button>
+        <button class="loom-btn" onclick="stepBack()" title="Previous">⏪</button>
+        <button class="loom-btn active" onclick="togglePlay()" id="playBtn" title="Play/Pause">⏸</button>
+        <button class="loom-btn" onclick="stepForward()" title="Next">⏩</button>
+        <button class="loom-btn" onclick="goToEnd()" title="End">⏭</button>
+        <div style="width: 1px; height: 24px; background: var(--border); margin: 0 4px;"></div>
+        <span class="frame-display" id="frameDisplay">0 / 0</span>
+        <div style="width: 1px; height: 24px; background: var(--border); margin: 0 4px;"></div>
+        <button class="loom-btn" onclick="resetView()" title="Reset">⟲</button>
+        <button class="loom-btn" onclick="zoom(-0.1)" title="Out">−</button>
+        <button class="loom-btn" onclick="zoom(0.1)" title="In">+</button>
+    </div>
 </div>
 
 <script>
-const LOGO_FILENAME = 'logo.png';
-document.getElementById('headerLogo').src = LOGO_FILENAME;
-document.getElementById('dropLogo').src = LOGO_FILENAME;
+// ====================
+// PREINSTALLED BRUSHES
+// ====================
+const PREINSTALLED_BRUSHES = [
+    { name: 'Neon', colors: ['#00ff88', '#ff0088', '#00d4ff', '#ffaa00', '#ff0044', '#8800ff', '#ffffff'] },
+    { name: 'Pastel', colors: ['#ffd1dc', '#c1e1c1', '#c1d1e8', '#f7dc6f', '#e8c1c1', '#d1c1e8', '#c1e8d1'] },
+    { name: 'Fire', colors: ['#ff0000', '#ff4400', '#ff8800', '#ffaa00', '#ffcc00', '#ff2200', '#ff6600'] },
+    { name: 'Ocean', colors: ['#0066ff', '#0088ff', '#00aaff', '#00ccff', '#00eeff', '#0044ff', '#0022ff'] },
+    { name: 'Mono', colors: ['#ffffff', '#cccccc', '#999999', '#666666', '#333333', '#111111', '#000000'] },
+    { name: 'Berry', colors: ['#ff0044', '#cc0066', '#990088', '#6600aa', '#3300cc', '#ff2266', '#ff4488'] }
+];
 
+// State
+let projects = [];
+let currentProject = null;
 let currentSVG = null;
-let originalSVG = null;
 let threads = [];
 let originalThreadStyles = [];
+let activeThreadIndex = -1;
 let isPlaying = true;
 let zoomLevel = 1;
-let savedBrushes = JSON.parse(localStorage.getItem('reeestyle_brushes') || '[]');
+let currentFrame = 0;
+let totalFrames = 0;
+let animationFrameId = null;
 
-const dropZone = document.getElementById('dropZone');
-const mainLayout = document.getElementById('mainLayout');
-const threadsList = document.getElementById('threadsList');
-const threadCount = document.getElementById('threadCount');
-const svgContainer = document.getElementById('svgContainer');
-const fileInput = document.getElementById('fileInput');
+// ====================
+// PROJECT GRID
+// ====================
 
-dropZone.addEventListener('click', () => fileInput.click());
-dropZone.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    dropZone.classList.add('dragover');
-});
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-dropZone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    dropZone.classList.remove('dragover');
-    const file = e.dataTransfer.files[0];
-    if (file && file.name.endsWith('.svg')) loadSVG(file);
-});
-fileInput.addEventListener('change', (e) => {
-    if (e.target.files[0]) loadSVG(e.target.files[0]);
-});
+function createNewProject() {
+    document.getElementById('fileInput').click();
+}
 
-function loadSVG(file) {
+function loadSVGFile(event) {
+    const file = event.target.files[0];
+    if (!file || !file.name.endsWith('.svg')) {
+        alert('Please select a .svg file');
+        return;
+    }
+    
     const reader = new FileReader();
     reader.onload = (e) => {
         const parser = new DOMParser();
@@ -500,45 +714,145 @@ function loadSVG(file) {
             return;
         }
         
-        originalSVG = svg.cloneNode(true);
-        currentSVG = svg;
+        const project = {
+            id: Date.now(),
+            name: file.name.replace('.svg', ''),
+            svgString: e.target.result,
+            originalSVG: svg.cloneNode(true),
+            threads: []
+        };
         
-        svgContainer.innerHTML = '';
-        svgContainer.appendChild(currentSVG);
-        
-        extractThreads(currentSVG);
-        storeOriginalStyles();
-        
-        dropZone.classList.add('hidden');
-        mainLayout.classList.add('active');
-        
-        updateSavedBrushesUI();
-        
-        // Start playing by default
-        isPlaying = true;
-        updatePlayButton();
-        startAnimation();
+        projects.push(project);
+        renderProjects();
+        openProject(project.id);
     };
     reader.readAsText(file);
 }
 
-// ============================================
-// THREAD DETECTION
-// ============================================
+function renderProjects() {
+    const grid = document.getElementById('projectGrid');
+    const importCard = grid.firstElementChild;
+    grid.innerHTML = '';
+    grid.appendChild(importCard);
+    
+    projects.forEach(project => {
+        const card = document.createElement('div');
+        card.className = 'project-card';
+        card.dataset.projectId = project.id;
+        card.onclick = (e) => {
+            if (!e.target.closest('.card-action-btn')) {
+                openProject(project.id);
+            }
+        };
+        
+        const preview = document.createElement('div');
+        preview.className = 'card-preview';
+        
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(project.svgString, 'image/svg+xml');
+        const svg = doc.querySelector('svg');
+        if (svg) {
+            svg.setAttribute('width', '100%');
+            svg.setAttribute('height', '100%');
+            preview.appendChild(svg);
+        }
+        
+        const info = document.createElement('div');
+        info.className = 'card-info';
+        info.innerHTML = `
+            <span class="card-name">${project.name}</span>
+            <div class="card-actions">
+                <button class="card-action-btn" onclick="deleteProject(${project.id})" title="Delete">🗑</button>
+            </div>
+        `;
+        
+        const progress = document.createElement('div');
+        progress.className = 'progress-bar';
+        progress.innerHTML = '<div class="progress-fill" style="width: 100%"></div>';
+        
+        card.appendChild(preview);
+        card.appendChild(info);
+        card.appendChild(progress);
+        grid.appendChild(card);
+    });
+}
+
+function deleteProject(id) {
+    if (!confirm('Delete this project?')) return;
+    projects = projects.filter(p => p.id !== id);
+    renderProjects();
+}
+
+function clearAllProjects() {
+    if (!confirm('Clear all projects?')) return;
+    projects = [];
+    renderProjects();
+}
+
+function openProject(id) {
+    const project = projects.find(p => p.id === id);
+    if (!project) return;
+    
+    currentProject = project;
+    
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(project.svgString, 'image/svg+xml');
+    currentSVG = doc.querySelector('svg');
+    
+    const container = document.getElementById('svgContainer');
+    container.innerHTML = '';
+    container.appendChild(currentSVG);
+    
+    extractThreads(currentSVG);
+    storeOriginalStyles();
+    buildThreadWheel();
+    
+    document.getElementById('gridView').classList.add('hidden');
+    document.getElementById('editorView').classList.add('active');
+    
+    if (threads.length > 0) {
+        selectThread(0);
+    }
+    
+    isPlaying = true;
+    updatePlayButton();
+    startAnimation();
+    detectFrameInfo();
+}
+
+function backToGrid() {
+    isPlaying = false;
+    if (animationFrameId) cancelAnimationFrame(animationFrameId);
+    if (currentSVG && currentSVG.pauseAnimations) {
+        currentSVG.pauseAnimations();
+    }
+    
+    if (currentProject && currentSVG) {
+        const serializer = new XMLSerializer();
+        currentProject.svgString = serializer.serializeToString(currentSVG);
+    }
+    
+    document.getElementById('editorView').classList.remove('active');
+    document.getElementById('gridView').classList.remove('hidden');
+    
+    renderProjects();
+    
+    currentProject = null;
+    currentSVG = null;
+    threads = [];
+}
+
+// ====================
+// THREAD SYSTEM
+// ====================
 
 function isElementVisible(el) {
     if (!el) return false;
     const display = el.getAttribute('display');
     const visibility = el.getAttribute('visibility');
-    if (display === 'none') return false;
-    if (visibility === 'hidden') return false;
-    
+    if (display === 'none' || visibility === 'hidden') return false;
     const opacity = el.getAttribute('opacity');
     if (opacity !== null && parseFloat(opacity) <= 0) return false;
-    
-    const style = el.getAttribute('style') || '';
-    if (style.includes('display:none') || style.includes('visibility:hidden')) return false;
-    
     return true;
 }
 
@@ -546,7 +860,7 @@ function isInDefsOrMetadata(element) {
     let el = element;
     while (el) {
         const tag = el.tagName?.toLowerCase();
-        if (tag === 'defs' || tag === 'metadata' || tag === 'title' || tag === 'script' || tag === 'style') return true;
+        if (['defs', 'metadata', 'title', 'script', 'style'].includes(tag)) return true;
         el = el.parentElement;
     }
     return false;
@@ -555,72 +869,28 @@ function isInDefsOrMetadata(element) {
 function getAllDrawableElements(element) {
     const results = [];
     const walk = (el) => {
-        if (!el) return;
-        if (isInDefsOrMetadata(el)) return;
-        if (!isElementVisible(el)) return;
-        
+        if (!el || isInDefsOrMetadata(el) || !isElementVisible(el)) return;
         const tag = el.tagName.toLowerCase();
         if (['path', 'line', 'polyline', 'polygon', 'rect', 'circle', 'ellipse'].includes(tag)) {
-            const d = el.getAttribute('d');
             const stroke = el.getAttribute('stroke');
             const fill = el.getAttribute('fill');
-            
-            if (tag === 'path') {
-                if (!d || d.trim() === '' || d.trim() === 'M0,0' || d.trim() === 'M 0 0') return;
-            }
-            
             const hasStroke = stroke && stroke !== 'none' && stroke !== 'transparent';
             const hasFill = fill && fill !== 'none' && fill !== 'transparent';
-            
-            if (hasStroke || hasFill) {
-                results.push(el);
-            }
+            if (hasStroke || hasFill) results.push(el);
         }
-        
-        for (const child of el.children) {
-            walk(child);
-        }
+        for (const child of el.children) walk(child);
     };
     walk(element);
-    return results;
-}
-
-function getDirectDrawableChildren(element) {
-    const results = [];
-    for (const child of element.children) {
-        const tag = child.tagName.toLowerCase();
-        if (['path', 'line', 'polyline', 'polygon', 'rect', 'circle', 'ellipse'].includes(tag)) {
-            const stroke = child.getAttribute('stroke');
-            const fill = child.getAttribute('fill');
-            const hasStroke = stroke && stroke !== 'none' && stroke !== 'transparent';
-            const hasFill = fill && fill !== 'none' && fill !== 'transparent';
-            if (hasStroke || hasFill) {
-                results.push(child);
-            }
-        }
-    }
-    return results;
-}
-
-function getChildGroups(element) {
-    const results = [];
-    for (const child of element.children) {
-        if (child.tagName.toLowerCase() === 'g') {
-            results.push(child);
-        }
-    }
     return results;
 }
 
 function sampleThreadStyle(paths) {
     for (const path of paths) {
         if (!isElementVisible(path)) continue;
-        
         const stroke = path.getAttribute('stroke');
         const fill = path.getAttribute('fill');
         const hasStroke = stroke && stroke !== 'none' && stroke !== 'transparent';
         const hasFill = fill && fill !== 'none' && fill !== 'transparent';
-        
         if (!hasStroke && !hasFill) continue;
         
         let type, color;
@@ -646,143 +916,52 @@ function sampleThreadStyle(paths) {
 
 function extractThreads(svg) {
     threads = [];
-    threadsList.innerHTML = '';
     
-    const allGroups = Array.from(svg.querySelectorAll('g')).filter(g => !isInDefsOrMetadata(g) && isElementVisible(g));
+    const topGroups = Array.from(svg.children).filter(c => 
+        c.tagName.toLowerCase() === 'g' && !isInDefsOrMetadata(c) && isElementVisible(c)
+    );
     
-    const candidates = [];
-    
-    for (const g of allGroups) {
-        const allPaths = getAllDrawableElements(g);
-        if (allPaths.length === 0) continue;
-        
-        const directPaths = getDirectDrawableChildren(g);
-        const childGroups = getChildGroups(g);
-        
-        let score = 0;
-        score += allPaths.length * 2;
-        score += childGroups.length * 10;
-        
-        if (childGroups.length === 0 && directPaths.length > 0) {
-            score -= 5;
-        }
-        
-        let depth = 0;
-        let el = g.parentElement;
-        while (el && el.tagName.toLowerCase() !== 'svg') {
-            depth++;
-            el = el.parentElement;
-        }
-        score -= depth * 3;
-        
-        if (g.parentElement && g.parentElement.tagName.toLowerCase() === 'svg') {
-            score += 20;
-        }
-        
-        candidates.push({
-            element: g,
-            score: score,
-            pathCount: allPaths.length,
-            childGroupCount: childGroups.length,
-            depth: depth,
-            isTopLevel: g.parentElement?.tagName.toLowerCase() === 'svg'
-        });
-    }
-    
-    candidates.sort((a, b) => b.score - a.score);
-    
-    const selectedThreads = [];
-    const usedElements = new Set();
-    
-    for (const candidate of candidates) {
-        let skip = false;
-        for (const used of usedElements) {
-            if (candidate.element.closest(`#${used.id}`) || used.contains(candidate.element)) {
-                skip = true;
-                break;
-            }
-            if (used.closest(`#${candidate.element.id}`) || candidate.element.contains(used)) {
-                const idx = selectedThreads.findIndex(t => t.element === used);
-                if (idx !== -1) {
-                    selectedThreads.splice(idx, 1);
-                    usedElements.delete(used);
-                }
-                break;
-            }
-        }
-        if (skip) continue;
-        
-        if (candidate.pathCount < 3 && candidate.childGroupCount === 0) continue;
-        
-        selectedThreads.push(candidate);
-        usedElements.add(candidate.element);
-    }
-    
-    if (selectedThreads.length >= 1) {
-        selectedThreads.forEach((candidate, index) => {
-            const allPaths = getAllDrawableElements(candidate.element);
-            const style = sampleThreadStyle(allPaths);
+    if (topGroups.length > 1) {
+        topGroups.forEach((g, index) => {
+            const paths = getAllDrawableElements(g);
+            if (paths.length === 0) return;
             
+            const style = sampleThreadStyle(paths);
             if (!style) return;
             
-            const thread = {
+            threads.push({
                 id: `thread-${index}`,
-                element: candidate.element,
-                paths: allPaths,
+                element: g,
+                paths: paths,
                 name: `Thread ${index + 1}`,
-                type: style.type,
-                color: style.color,
-                strokeWidth: style.strokeWidth,
-                opacity: style.opacity,
-                strokeLinecap: style.strokeLinecap,
-                blendMode: style.blendMode,
-                debug: `${allPaths.length} paths, ${candidate.childGroupCount} subgroups, depth ${candidate.depth}`
-            };
-            
-            threads.push(thread);
-            createThreadControl(thread);
+                ...style
+            });
         });
     }
     
     if (threads.length === 0) {
-        const allPaths = getAllDrawableElements(svg);
-        const pathsByParent = new Map();
-        
-        for (const path of allPaths) {
-            const parent = path.parentElement;
-            if (!parent || parent.tagName.toLowerCase() === 'svg') continue;
-            if (isInDefsOrMetadata(parent)) continue;
+        for (const topG of topGroups) {
+            const childGroups = Array.from(topG.children).filter(c => 
+                c.tagName.toLowerCase() === 'g'
+            );
             
-            if (!pathsByParent.has(parent)) {
-                pathsByParent.set(parent, []);
+            if (childGroups.length > 1) {
+                childGroups.forEach((g, index) => {
+                    const paths = getAllDrawableElements(g);
+                    if (paths.length === 0) return;
+                    
+                    const style = sampleThreadStyle(paths);
+                    if (!style) return;
+                    
+                    threads.push({
+                        id: `thread-${threads.length}`,
+                        element: g,
+                        paths: paths,
+                        name: `Thread ${threads.length + 1}`,
+                        ...style
+                    });
+                });
             }
-            pathsByParent.get(parent).push(path);
-        }
-        
-        let index = 0;
-        for (const [parent, paths] of pathsByParent) {
-            if (paths.length < 2) continue;
-            
-            const style = sampleThreadStyle(paths);
-            if (!style) continue;
-            
-            const thread = {
-                id: `thread-${index}`,
-                element: parent,
-                paths: paths,
-                name: `Thread ${index + 1}`,
-                type: style.type,
-                color: style.color,
-                strokeWidth: style.strokeWidth,
-                opacity: style.opacity,
-                strokeLinecap: style.strokeLinecap,
-                blendMode: style.blendMode,
-                debug: `${paths.length} paths (grouped by parent)`
-            };
-            
-            threads.push(thread);
-            createThreadControl(thread);
-            index++;
         }
     }
     
@@ -791,111 +970,82 @@ function extractThreads(svg) {
         if (allPaths.length > 0) {
             const style = sampleThreadStyle(allPaths);
             if (style) {
-                const thread = {
+                threads.push({
                     id: 'thread-0',
                     element: svg,
                     paths: allPaths,
                     name: 'Main Thread',
-                    type: style.type,
-                    color: style.color,
-                    strokeWidth: style.strokeWidth,
-                    opacity: style.opacity,
-                    strokeLinecap: style.strokeLinecap,
-                    blendMode: style.blendMode,
-                    debug: `${allPaths.length} paths (fallback)`
-                };
-                threads.push(thread);
-                createThreadControl(thread);
+                    ...style
+                });
             }
         }
     }
-    
-    threadCount.textContent = `${threads.length} thread${threads.length !== 1 ? 's' : ''} detected`;
 }
 
-function createThreadControl(thread) {
-    const card = document.createElement('div');
-    card.className = 'thread-card';
+function buildThreadWheel() {
+    const wheel = document.getElementById('threadWheel');
+    wheel.innerHTML = '';
+    
+    threads.forEach((thread, index) => {
+        const dot = document.createElement('div');
+        dot.className = 'thread-dot';
+        dot.style.background = thread.color;
+        dot.id = `thread-dot-${index}`;
+        dot.onclick = () => selectThread(index);
+        
+        const label = document.createElement('span');
+        label.className = 'thread-label';
+        label.textContent = index + 1;
+        dot.appendChild(label);
+        
+        wheel.appendChild(dot);
+    });
+}
+
+function selectThread(index) {
+    if (index < 0 || index >= threads.length) return;
+    
+    document.querySelectorAll('.thread-dot').forEach((dot, i) => {
+        dot.classList.toggle('active', i === index);
+    });
+    
+    activeThreadIndex = index;
+    const thread = threads[index];
+    
+    document.getElementById('activeThreadName').textContent = thread.name;
+    syncControlsToThread(index);
+}
+
+function syncControlsToThread(index) {
+    const thread = threads[index];
+    document.getElementById('brushType').value = thread.type;
+    document.getElementById('brushColor').value = rgbToHex(thread.color);
+    document.getElementById('brushWidth').value = thread.strokeWidth;
+    document.getElementById('widthDisplay').textContent = thread.strokeWidth + 'px';
+    document.getElementById('brushCap').value = thread.strokeLinecap;
+    document.getElementById('brushOpacity').value = thread.opacity;
+    document.getElementById('opacityDisplay').textContent = Math.round(thread.opacity * 100) + '%';
     
     const isLine = thread.type === 'line';
-    const color = thread.color === 'none' ? '#000000' : thread.color;
-    
-    card.innerHTML = `
-        <div class="thread-header">
-            <div class="thread-color-preview" style="background: ${color}" id="preview-${thread.id}"></div>
-            <div class="thread-name">${thread.name}</div>
-        </div>
-        
-        <div class="debug-info">${thread.debug || ''}</div>
-        
-        <div class="control-group">
-            <label class="control-label">Brush Type</label>
-            <select onchange="updateThread('${thread.id}', 'type', this.value)">
-                <option value="line" ${isLine ? 'selected' : ''}>✏️ Line Brush</option>
-                <option value="fill" ${!isLine ? 'selected' : ''}>🎨 Fill Brush</option>
-            </select>
-        </div>
-        
-        <div class="control-group">
-            <label class="control-label">
-                Color
-                <span class="value-display" id="color-val-${thread.id}">${color}</span>
-            </label>
-            <input type="color" value="${rgbToHex(color)}" 
-                   oninput="updateThread('${thread.id}', 'color', this.value)">
-        </div>
-        
-        <div class="control-group" id="width-control-${thread.id}" style="${!isLine ? 'display:none' : ''}">
-            <label class="control-label">
-                Stroke Width
-                <span class="value-display" id="width-val-${thread.id}">${thread.strokeWidth}px</span>
-            </label>
-            <input type="range" min="0.5" max="50" step="0.5" value="${thread.strokeWidth}"
-                   oninput="updateThread('${thread.id}', 'strokeWidth', this.value)">
-        </div>
-        
-        <div class="control-group" id="cap-control-${thread.id}" style="${!isLine ? 'display:none' : ''}">
-            <label class="control-label">Line Cap</label>
-            <select onchange="updateThread('${thread.id}', 'strokeLinecap', this.value)">
-                <option value="round" ${thread.strokeLinecap === 'round' ? 'selected' : ''}>Round</option>
-                <option value="butt" ${thread.strokeLinecap === 'butt' ? 'selected' : ''}>Butt</option>
-                <option value="square" ${thread.strokeLinecap === 'square' ? 'selected' : ''}>Square</option>
-            </select>
-        </div>
-        
-        <div class="control-group">
-            <label class="control-label">
-                Opacity
-                <span class="value-display" id="opacity-val-${thread.id}">${Math.round(thread.opacity * 100)}%</span>
-            </label>
-            <input type="range" min="0" max="1" step="0.05" value="${thread.opacity}"
-                   oninput="updateThread('${thread.id}', 'opacity', this.value)">
-        </div>
-    `;
-    
-    threadsList.appendChild(card);
+    document.getElementById('widthControl').style.display = isLine ? 'block' : 'none';
+    document.getElementById('capControl').style.display = isLine ? 'block' : 'none';
 }
 
-function updateThread(threadId, property, value) {
-    const thread = threads.find(t => t.id === threadId);
+function updateActiveThread(property, value) {
+    if (activeThreadIndex < 0) return;
+    updateThreadByIndex(activeThreadIndex, property, value);
+    syncControlsToThread(activeThreadIndex);
+}
+
+function updateThreadByIndex(index, property, value) {
+    const thread = threads[index];
     if (!thread) return;
     
     thread[property] = value;
     
-    if (property === 'strokeWidth') {
-        document.getElementById(`width-val-${threadId}`).textContent = value + 'px';
-    } else if (property === 'opacity') {
-        document.getElementById(`opacity-val-${threadId}`).textContent = Math.round(value * 100) + '%';
-    } else if (property === 'color') {
-        document.getElementById(`color-val-${threadId}`).textContent = value;
-        document.getElementById(`preview-${threadId}`).style.background = value;
-    }
-    
-    if (property === 'type') {
-        const widthControl = document.getElementById(`width-control-${threadId}`);
-        const capControl = document.getElementById(`cap-control-${threadId}`);
-        if (widthControl) widthControl.style.display = value === 'line' ? 'block' : 'none';
-        if (capControl) capControl.style.display = value === 'line' ? 'block' : 'none';
+    if (property === 'color') {
+        const dot = document.getElementById(`thread-dot-${index}`);
+        if (dot) dot.style.background = value;
     }
     
     applyThreadStyles(thread);
@@ -915,46 +1065,58 @@ function applyThreadStyles(thread) {
             path.setAttribute('stroke-linecap', thread.strokeLinecap);
             path.setAttribute('stroke-linejoin', 'round');
         }
-        
         path.setAttribute('opacity', thread.opacity);
     });
 }
 
-// ============================================
-// ANIMATION - FIXED PLAY/PAUSE
-// ============================================
+// ====================
+// ANIMATION
+// ====================
+
+function detectFrameInfo() {
+    if (!currentSVG) return;
+    const animates = currentSVG.querySelectorAll('animate, animateTransform');
+    totalFrames = animates.length || 1;
+    updateFrameDisplay();
+}
+
+function updateFrameDisplay() {
+    document.getElementById('frameDisplay').textContent = `${currentFrame} / ${totalFrames}`;
+}
 
 function updatePlayButton() {
     const btn = document.getElementById('playBtn');
-    if (isPlaying) {
-        btn.textContent = '⏸';
-        btn.title = 'Pause';
-        btn.classList.add('active');
-    } else {
-        btn.textContent = '▶';
-        btn.title = 'Play';
-        btn.classList.remove('active');
-    }
+    btn.textContent = isPlaying ? '⏸' : '▶';
+    btn.classList.toggle('active', isPlaying);
 }
 
 function startAnimation() {
     if (!currentSVG) return;
     
-    // Try SVG native animation API first
     if (currentSVG.unpauseAnimations) {
         currentSVG.unpauseAnimations();
     }
     
-    // Also ensure all animate elements are running
-    const animates = currentSVG.querySelectorAll('animate, animateTransform, animateMotion, set');
+    const animates = currentSVG.querySelectorAll('animate, animateTransform, animateMotion');
     animates.forEach(anim => {
-        // Remove any frozen state
         anim.removeAttribute('fill');
-        // Ensure begin is set
-        if (!anim.getAttribute('begin')) {
-            anim.setAttribute('begin', '0s');
-        }
+        if (!anim.getAttribute('begin')) anim.setAttribute('begin', '0s');
     });
+    
+    if (animationFrameId) cancelAnimationFrame(animationFrameId);
+    animateLoop();
+}
+
+function animateLoop() {
+    if (!isPlaying || !currentSVG) return;
+    
+    if (currentSVG.getCurrentTime) {
+        const time = currentSVG.getCurrentTime();
+        currentFrame = Math.floor(time * 12) % Math.max(totalFrames, 1);
+        updateFrameDisplay();
+    }
+    
+    animationFrameId = requestAnimationFrame(animateLoop);
 }
 
 function togglePlay() {
@@ -963,54 +1125,89 @@ function togglePlay() {
     
     if (!currentSVG) return;
     
-    // Method 1: SVG native API
     if (currentSVG.pauseAnimations && currentSVG.unpauseAnimations) {
         if (isPlaying) {
             currentSVG.unpauseAnimations();
+            animateLoop();
         } else {
             currentSVG.pauseAnimations();
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
         }
-        return;
     }
-    
-    // Method 2: CSS animation control for CSS-based animations
-    const animatedElements = currentSVG.querySelectorAll('[style*="animation"], animate, animateTransform, animateMotion');
-    animatedElements.forEach(el => {
-        if (isPlaying) {
-            el.style.animationPlayState = 'running';
-        } else {
-            el.style.animationPlayState = 'paused';
-        }
+}
+
+function stepForward() {
+    if (!currentSVG) return;
+    currentFrame = (currentFrame + 1) % Math.max(totalFrames, 1);
+    updateFrameDisplay();
+    if (currentSVG.getCurrentTime && currentSVG.setCurrentTime) {
+        currentSVG.setCurrentTime(currentSVG.getCurrentTime() + (1/12));
+    }
+}
+
+function stepBack() {
+    if (!currentSVG) return;
+    currentFrame = currentFrame > 0 ? currentFrame - 1 : Math.max(totalFrames - 1, 0);
+    updateFrameDisplay();
+    if (currentSVG.getCurrentTime && currentSVG.setCurrentTime) {
+        currentSVG.setCurrentTime(Math.max(0, currentSVG.getCurrentTime() - (1/12)));
+    }
+}
+
+function goToStart() {
+    currentFrame = 0;
+    updateFrameDisplay();
+    if (currentSVG && currentSVG.setCurrentTime) currentSVG.setCurrentTime(0);
+}
+
+function goToEnd() {
+    currentFrame = Math.max(totalFrames - 1, 0);
+    updateFrameDisplay();
+    if (currentSVG && currentSVG.setCurrentTime) currentSVG.setCurrentTime(totalFrames / 12);
+}
+
+// ====================
+// PREINSTALLED BRUSHES
+// ====================
+
+function initPreinstalledBrushes() {
+    const grid = document.getElementById('presetGrid');
+    PREINSTALLED_BRUSHES.forEach((preset, index) => {
+        const swatch = document.createElement('div');
+        swatch.className = 'preset-swatch';
+        swatch.style.background = `linear-gradient(135deg, ${preset.colors[0]}, ${preset.colors[1] || preset.colors[0]})`;
+        swatch.setAttribute('data-name', preset.name);
+        swatch.onclick = () => applyPreinstalledPreset(index);
+        grid.appendChild(swatch);
     });
 }
 
-function zoom(delta) {
-    zoomLevel = Math.max(0.1, Math.min(3, zoomLevel + delta));
-    svgContainer.style.transform = `scale(${zoomLevel})`;
+function applyPreinstalledPreset(index) {
+    const preset = PREINSTALLED_BRUSHES[index];
+    if (!preset || threads.length === 0) return;
+    
+    threads.forEach((thread, i) => {
+        if (i >= preset.colors.length) return;
+        updateThreadByIndex(i, 'color', preset.colors[i]);
+        if (preset.name === 'Neon') {
+            updateThreadByIndex(i, 'strokeWidth', 3);
+            updateThreadByIndex(i, 'opacity', 0.9);
+        } else if (preset.name === 'Pastel') {
+            updateThreadByIndex(i, 'strokeWidth', 4);
+            updateThreadByIndex(i, 'opacity', 0.6);
+        }
+    });
+    
+    if (activeThreadIndex >= 0) syncControlsToThread(activeThreadIndex);
 }
 
-function resetView() {
-    zoomLevel = 1;
-    svgContainer.style.transform = 'scale(1)';
-}
-
-function toggleBrushMenu() {
-    document.getElementById('brushMenu').classList.toggle('show');
-    document.getElementById('exportMenu').classList.remove('show');
-}
-
-function toggleExport() {
-    document.getElementById('exportMenu').classList.toggle('show');
-    document.getElementById('brushMenu').classList.remove('show');
-}
-
-// ============================================
+// ====================
 // BRUSH PRESETS
-// ============================================
+// ====================
 
 function saveCurrentBrushes() {
     if (threads.length === 0) {
-        alert('Open a Looom SVG first!');
+        alert('Open a project first!');
         return;
     }
     
@@ -1031,18 +1228,20 @@ function saveCurrentBrushes() {
         }))
     };
     
-    savedBrushes.push(preset);
-    localStorage.setItem('reeestyle_brushes', JSON.stringify(savedBrushes));
-    updateSavedBrushesUI();
-    alert(`Saved "${presetName}" with ${preset.brushes.length} threads!`);
+    const blob = new Blob([JSON.stringify(preset, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `reeestyle-${presetName.replace(/\s+/g, '-').toLowerCase()}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
 }
 
 function loadBrushPreset(event) {
     const file = event.target.files[0];
     if (!file) return;
     
-    // Validate file type
-    if (!file.name.endsWith('.json') && file.type !== 'application/json') {
+    if (!file.name.endsWith('.json')) {
         alert('Please upload a .json brush preset file.');
         return;
     }
@@ -1053,7 +1252,7 @@ function loadBrushPreset(event) {
             const preset = JSON.parse(e.target.result);
             applyBrushPreset(preset);
         } catch (err) {
-            alert('Invalid brush preset file. Must be a valid .json file exported from Reeestyle.');
+            alert('Invalid brush preset file.');
         }
     };
     reader.readAsText(file);
@@ -1061,49 +1260,40 @@ function loadBrushPreset(event) {
 
 function applyBrushPreset(preset) {
     if (!preset.brushes || !Array.isArray(preset.brushes)) {
-        alert('Invalid preset format. Expected a "brushes" array.');
+        alert('Invalid preset format.');
         return;
     }
     
     preset.brushes.forEach((brush, index) => {
         if (index >= threads.length) return;
-        const thread = threads[index];
-        
-        if (brush.type) updateThread(thread.id, 'type', brush.type);
-        if (brush.color) updateThread(thread.id, 'color', brush.color);
-        if (brush.strokeWidth) updateThread(thread.id, 'strokeWidth', brush.strokeWidth);
-        if (brush.opacity !== undefined) updateThread(thread.id, 'opacity', brush.opacity);
-        if (brush.strokeLinecap) updateThread(thread.id, 'strokeLinecap', brush.strokeLinecap);
-        if (brush.blendMode) updateThread(thread.id, 'blendMode', brush.blendMode);
+        if (brush.type) updateThreadByIndex(index, 'type', brush.type);
+        if (brush.color) updateThreadByIndex(index, 'color', brush.color);
+        if (brush.strokeWidth) updateThreadByIndex(index, 'strokeWidth', brush.strokeWidth);
+        if (brush.opacity !== undefined) updateThreadByIndex(index, 'opacity', brush.opacity);
+        if (brush.strokeLinecap) updateThreadByIndex(index, 'strokeLinecap', brush.strokeLinecap);
     });
     
+    if (activeThreadIndex >= 0) syncControlsToThread(activeThreadIndex);
     alert(`Applied "${preset.name}"!`);
 }
 
 function resetToDefault() {
-    if (originalThreadStyles.length === 0) {
-        alert('No original styles stored. Re-open the SVG to reset.');
-        return;
-    }
+    if (originalThreadStyles.length === 0) return;
     
-    originalThreadStyles.forEach(style => {
-        const thread = threads.find(t => t.id === style.id);
-        if (!thread) return;
-        
-        updateThread(thread.id, 'type', style.type);
-        updateThread(thread.id, 'color', style.color);
-        updateThread(thread.id, 'strokeWidth', style.strokeWidth);
-        updateThread(thread.id, 'opacity', style.opacity);
-        updateThread(thread.id, 'strokeLinecap', style.strokeLinecap);
-        updateThread(thread.id, 'blendMode', style.blendMode);
+    originalThreadStyles.forEach((style, index) => {
+        if (index >= threads.length) return;
+        updateThreadByIndex(index, 'type', style.type);
+        updateThreadByIndex(index, 'color', style.color);
+        updateThreadByIndex(index, 'strokeWidth', style.strokeWidth);
+        updateThreadByIndex(index, 'opacity', style.opacity);
+        updateThreadByIndex(index, 'strokeLinecap', style.strokeLinecap);
     });
     
-    alert('Reset to original styles!');
+    if (activeThreadIndex >= 0) syncControlsToThread(activeThreadIndex);
 }
 
 function storeOriginalStyles() {
     originalThreadStyles = threads.map(t => ({
-        id: t.id,
         type: t.type,
         color: t.color,
         strokeWidth: t.strokeWidth,
@@ -1113,58 +1303,9 @@ function storeOriginalStyles() {
     }));
 }
 
-function updateSavedBrushesUI() {
-    const container = document.getElementById('savedBrushesContainer');
-    const list = document.getElementById('savedBrushesList');
-    
-    if (savedBrushes.length === 0) {
-        container.style.display = 'none';
-        return;
-    }
-    
-    container.style.display = 'block';
-    list.innerHTML = '';
-    
-    savedBrushes.forEach((preset, index) => {
-        const item = document.createElement('div');
-        item.className = 'saved-brush-item';
-        item.innerHTML = `
-            <span>${preset.name} (${preset.brushes.length} threads)</span>
-            <div>
-                <button onclick="downloadPreset(${index})">💾</button>
-                <button onclick="applySavedPreset(${index})">Apply</button>
-                <button onclick="deletePreset(${index})">🗑</button>
-            </div>
-        `;
-        list.appendChild(item);
-    });
-}
-
-function downloadPreset(index) {
-    const preset = savedBrushes[index];
-    const blob = new Blob([JSON.stringify(preset, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `reeestyle-${preset.name.replace(/\s+/g, '-').toLowerCase()}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-}
-
-function applySavedPreset(index) {
-    applyBrushPreset(savedBrushes[index]);
-}
-
-function deletePreset(index) {
-    if (!confirm('Delete this preset?')) return;
-    savedBrushes.splice(index, 1);
-    localStorage.setItem('reeestyle_brushes', JSON.stringify(savedBrushes));
-    updateSavedBrushesUI();
-}
-
-// ============================================
+// ====================
 // EXPORT
-// ============================================
+// ====================
 
 function exportSVG() {
     if (!currentSVG) return;
@@ -1176,11 +1317,10 @@ function exportSVG() {
     
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'reeestyle-export.svg';
+    link.download = `${currentProject?.name || 'reeestyle'}-export.svg`;
     link.click();
     
     URL.revokeObjectURL(url);
-    toggleExport();
 }
 
 function exportPNG() {
@@ -1201,13 +1341,22 @@ function exportPNG() {
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         
         const link = document.createElement('a');
-        link.download = 'reeestyle-export.png';
+        link.download = `${currentProject?.name || 'reeestyle'}-export.png`;
         link.href = canvas.toDataURL('image/png');
         link.click();
     };
     
     img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
-    toggleExport();
+}
+
+function zoom(delta) {
+    zoomLevel = Math.max(0.1, Math.min(3, zoomLevel + delta));
+    document.getElementById('svgContainer').style.transform = `scale(${zoomLevel})`;
+}
+
+function resetView() {
+    zoomLevel = 1;
+    document.getElementById('svgContainer').style.transform = 'scale(1)';
 }
 
 function rgbToHex(color) {
@@ -1224,14 +1373,8 @@ function rgbToHex(color) {
     return '#000000';
 }
 
-document.addEventListener('click', (e) => {
-    if (!e.target.closest('.export-menu')) {
-        document.getElementById('exportMenu').classList.remove('show');
-    }
-    if (!e.target.closest('.brush-menu')) {
-        document.getElementById('brushMenu').classList.remove('show');
-    }
-});
+// Initialize
+initPreinstalledBrushes();
 </script>
 
 </body>
