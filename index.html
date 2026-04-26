@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reeestyle — Looom Brush Editor</title>
+    <link rel="icon" type="image/png" href="logo.png">
     <style>
         :root {
             --bg: #0f0f13;
@@ -255,9 +256,11 @@
             align-items: center;
             justify-content: center;
             transition: all 0.2s;
+            font-size: 1rem;
         }
         
         .icon-btn:hover { background: var(--accent2); color: var(--bg); }
+        .icon-btn.active { background: var(--accent2); color: var(--bg); }
         
         .hidden { display: none !important; }
         
@@ -274,7 +277,7 @@
             border: 1px solid var(--border);
             border-radius: 12px;
             padding: 0.5rem;
-            min-width: 220px;
+            min-width: 240px;
             display: none;
             z-index: 100;
         }
@@ -295,12 +298,26 @@
             display: none;
         }
         
+        .brush-option small {
+            display: block;
+            color: #666;
+            font-size: 0.7rem;
+            margin-top: 0.25rem;
+        }
+        
         .thread-count {
             color: #666;
             font-size: 0.8rem;
             margin-bottom: 1rem;
             padding-bottom: 0.5rem;
             border-bottom: 1px solid var(--border);
+        }
+        
+        .debug-info {
+            color: #555;
+            font-size: 0.7rem;
+            margin-top: 0.5rem;
+            font-family: monospace;
         }
         
         .saved-brushes {
@@ -337,6 +354,24 @@
             margin-bottom: 0.75rem;
             color: var(--text);
         }
+        
+        .file-format-info {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.75rem;
+            margin-top: 0.5rem;
+            font-size: 0.75rem;
+            color: #888;
+        }
+        
+        .file-format-info code {
+            background: #2a2a35;
+            padding: 0.125rem 0.375rem;
+            border-radius: 4px;
+            color: var(--accent2);
+            font-family: monospace;
+        }
     </style>
 </head>
 <body>
@@ -355,10 +390,16 @@
         <div class="brush-menu">
             <button class="btn teal" onclick="toggleBrushMenu()">Brushes ▼</button>
             <div class="brush-options" id="brushMenu">
-                <div class="brush-option" onclick="saveCurrentBrushes()">💾 Save Brush Preset</div>
-                <div class="brush-option" onclick="document.getElementById('brushFileInput').click()">📁 Load Brush Preset</div>
+                <div class="brush-option" onclick="saveCurrentBrushes()">
+                    💾 Save Brush Preset
+                    <small>Saves as .json file</small>
+                </div>
+                <div class="brush-option" onclick="document.getElementById('brushFileInput').click()">
+                    📁 Load Brush Preset
+                    <small>Accepts .json files only</small>
+                </div>
                 <div class="brush-option" onclick="resetToDefault()">↩️ Reset to Original</div>
-                <input type="file" id="brushFileInput" accept=".json" onchange="loadBrushPreset(event)">
+                <input type="file" id="brushFileInput" accept=".json,application/json" onchange="loadBrushPreset(event)">
             </div>
         </div>
         <div class="export-menu">
@@ -391,30 +432,31 @@
         </div>
         
         <div id="threadsList"></div>
+        
+        <div class="file-format-info">
+            <strong>Brush Preset Format</strong><br>
+            Save & load brush settings as <code>.json</code> files.<br><br>
+            Each preset contains color, stroke width, opacity, line cap, and blend mode for each thread. Share presets with other Reeestyle users!
+        </div>
     </aside>
     
     <main id="canvasArea">
         <div id="svgContainer"></div>
         
         <div class="playback-controls">
-            <button class="icon-btn" onclick="togglePlay()" id="playBtn">⏸</button>
-            <button class="icon-btn" onclick="resetView()">⟲</button>
-            <button class="icon-btn" onclick="zoom(-0.1)">−</button>
-            <button class="icon-btn" onclick="zoom(0.1)">+</button>
+            <button class="icon-btn" onclick="togglePlay()" id="playBtn" title="Play/Pause">⏸</button>
+            <button class="icon-btn" onclick="resetView()" title="Reset View">⟲</button>
+            <button class="icon-btn" onclick="zoom(-0.1)" title="Zoom Out">−</button>
+            <button class="icon-btn" onclick="zoom(0.1)" title="Zoom In">+</button>
         </div>
     </main>
 </div>
 
 <script>
-// ============================================
-// CONFIGURATION
-// ============================================
 const LOGO_FILENAME = 'logo.png';
-
 document.getElementById('headerLogo').src = LOGO_FILENAME;
 document.getElementById('dropLogo').src = LOGO_FILENAME;
 
-// State
 let currentSVG = null;
 let originalSVG = null;
 let threads = [];
@@ -423,7 +465,6 @@ let isPlaying = true;
 let zoomLevel = 1;
 let savedBrushes = JSON.parse(localStorage.getItem('reeestyle_brushes') || '[]');
 
-// DOM Elements
 const dropZone = document.getElementById('dropZone');
 const mainLayout = document.getElementById('mainLayout');
 const threadsList = document.getElementById('threadsList');
@@ -431,7 +472,6 @@ const threadCount = document.getElementById('threadCount');
 const svgContainer = document.getElementById('svgContainer');
 const fileInput = document.getElementById('fileInput');
 
-// File Handling
 dropZone.addEventListener('click', () => fileInput.click());
 dropZone.addEventListener('dragover', (e) => {
     e.preventDefault();
@@ -463,33 +503,27 @@ function loadSVG(file) {
         originalSVG = svg.cloneNode(true);
         currentSVG = svg;
         
-        // Display
         svgContainer.innerHTML = '';
         svgContainer.appendChild(currentSVG);
         
-        // Extract threads properly
         extractThreads(currentSVG);
-        
-        // Store original styles
         storeOriginalStyles();
         
-        // Show editor
         dropZone.classList.add('hidden');
         mainLayout.classList.add('active');
         
-        // Update saved brushes UI
         updateSavedBrushesUI();
         
-        // Start animation - DO NOT manipulate display/offsetHeight here!
-        // Let SMIL animations run naturally
+        // Start playing by default
         isPlaying = true;
-        document.getElementById('playBtn').textContent = '⏸';
+        updatePlayButton();
+        startAnimation();
     };
     reader.readAsText(file);
 }
 
 // ============================================
-// IMPROVED THREAD DETECTION
+// THREAD DETECTION
 // ============================================
 
 function isElementVisible(el) {
@@ -504,134 +538,205 @@ function isElementVisible(el) {
     
     const style = el.getAttribute('style') || '';
     if (style.includes('display:none') || style.includes('visibility:hidden')) return false;
-    if (style.includes('opacity:0') || style.includes('opacity: 0')) return false;
     
     return true;
-}
-
-function getAllPathsRecursive(element) {
-    // Recursively get ALL path-like elements within a group, including nested groups
-    const paths = [];
-    const walk = (el) => {
-        if (!isElementVisible(el)) return;
-        
-        const tag = el.tagName.toLowerCase();
-        if (['path', 'line', 'polyline', 'polygon', 'rect', 'circle', 'ellipse'].includes(tag)) {
-            paths.push(el);
-        }
-        
-        // Walk children (but skip defs, metadata)
-        for (const child of el.children) {
-            const childTag = child.tagName.toLowerCase();
-            if (childTag !== 'defs' && childTag !== 'metadata' && childTag !== 'title') {
-                walk(child);
-            }
-        }
-    };
-    walk(element);
-    return paths;
-}
-
-function hasDrawableContent(element) {
-    const paths = getAllPathsRecursive(element);
-    if (paths.length === 0) return false;
-    
-    for (const path of paths) {
-        const d = path.getAttribute('d');
-        const stroke = path.getAttribute('stroke');
-        const fill = path.getAttribute('fill');
-        
-        // Check for actual drawing data
-        if (path.tagName.toLowerCase() === 'path') {
-            if (!d || d.trim() === '' || d.trim() === 'M0,0' || d.trim() === 'M 0 0') continue;
-        }
-        
-        // Check for visible stroke or fill
-        const hasStroke = stroke && stroke !== 'none' && stroke !== 'transparent';
-        const hasFill = fill && fill !== 'none' && fill !== 'transparent';
-        
-        if (!hasStroke && !hasFill) continue;
-        
-        return true;
-    }
-    return false;
 }
 
 function isInDefsOrMetadata(element) {
     let el = element;
     while (el) {
         const tag = el.tagName?.toLowerCase();
-        if (tag === 'defs' || tag === 'metadata' || tag === 'title') return true;
+        if (tag === 'defs' || tag === 'metadata' || tag === 'title' || tag === 'script' || tag === 'style') return true;
         el = el.parentElement;
     }
     return false;
+}
+
+function getAllDrawableElements(element) {
+    const results = [];
+    const walk = (el) => {
+        if (!el) return;
+        if (isInDefsOrMetadata(el)) return;
+        if (!isElementVisible(el)) return;
+        
+        const tag = el.tagName.toLowerCase();
+        if (['path', 'line', 'polyline', 'polygon', 'rect', 'circle', 'ellipse'].includes(tag)) {
+            const d = el.getAttribute('d');
+            const stroke = el.getAttribute('stroke');
+            const fill = el.getAttribute('fill');
+            
+            if (tag === 'path') {
+                if (!d || d.trim() === '' || d.trim() === 'M0,0' || d.trim() === 'M 0 0') return;
+            }
+            
+            const hasStroke = stroke && stroke !== 'none' && stroke !== 'transparent';
+            const hasFill = fill && fill !== 'none' && fill !== 'transparent';
+            
+            if (hasStroke || hasFill) {
+                results.push(el);
+            }
+        }
+        
+        for (const child of el.children) {
+            walk(child);
+        }
+    };
+    walk(element);
+    return results;
+}
+
+function getDirectDrawableChildren(element) {
+    const results = [];
+    for (const child of element.children) {
+        const tag = child.tagName.toLowerCase();
+        if (['path', 'line', 'polyline', 'polygon', 'rect', 'circle', 'ellipse'].includes(tag)) {
+            const stroke = child.getAttribute('stroke');
+            const fill = child.getAttribute('fill');
+            const hasStroke = stroke && stroke !== 'none' && stroke !== 'transparent';
+            const hasFill = fill && fill !== 'none' && fill !== 'transparent';
+            if (hasStroke || hasFill) {
+                results.push(child);
+            }
+        }
+    }
+    return results;
+}
+
+function getChildGroups(element) {
+    const results = [];
+    for (const child of element.children) {
+        if (child.tagName.toLowerCase() === 'g') {
+            results.push(child);
+        }
+    }
+    return results;
+}
+
+function sampleThreadStyle(paths) {
+    for (const path of paths) {
+        if (!isElementVisible(path)) continue;
+        
+        const stroke = path.getAttribute('stroke');
+        const fill = path.getAttribute('fill');
+        const hasStroke = stroke && stroke !== 'none' && stroke !== 'transparent';
+        const hasFill = fill && fill !== 'none' && fill !== 'transparent';
+        
+        if (!hasStroke && !hasFill) continue;
+        
+        let type, color;
+        if (hasFill && !hasStroke) {
+            type = 'fill';
+            color = fill;
+        } else {
+            type = 'line';
+            color = stroke || fill || '#000000';
+        }
+        
+        return {
+            type: type,
+            color: color,
+            strokeWidth: parseFloat(path.getAttribute('stroke-width')) || 2,
+            opacity: parseFloat(path.getAttribute('opacity')) || 1,
+            strokeLinecap: path.getAttribute('stroke-linecap') || 'round',
+            blendMode: 'normal'
+        };
+    }
+    return null;
 }
 
 function extractThreads(svg) {
     threads = [];
     threadsList.innerHTML = '';
     
-    // Strategy: Looom exports threads as top-level <g> elements inside the SVG
-    // Each thread group contains frame subgroups, which contain the actual paths
-    // We need to identify the THREAD-LEVEL groups (not frame-level groups)
+    const allGroups = Array.from(svg.querySelectorAll('g')).filter(g => !isInDefsOrMetadata(g) && isElementVisible(g));
     
-    const svgChildren = Array.from(svg.children);
-    const candidateGroups = [];
+    const candidates = [];
     
-    // First pass: find all top-level groups that aren't defs/metadata
-    for (const child of svgChildren) {
-        if (child.tagName.toLowerCase() !== 'g') continue;
-        if (isInDefsOrMetadata(child)) continue;
-        if (!isElementVisible(child)) continue;
+    for (const g of allGroups) {
+        const allPaths = getAllDrawableElements(g);
+        if (allPaths.length === 0) continue;
         
-        candidateGroups.push(child);
+        const directPaths = getDirectDrawableChildren(g);
+        const childGroups = getChildGroups(g);
+        
+        let score = 0;
+        score += allPaths.length * 2;
+        score += childGroups.length * 10;
+        
+        if (childGroups.length === 0 && directPaths.length > 0) {
+            score -= 5;
+        }
+        
+        let depth = 0;
+        let el = g.parentElement;
+        while (el && el.tagName.toLowerCase() !== 'svg') {
+            depth++;
+            el = el.parentElement;
+        }
+        score -= depth * 3;
+        
+        if (g.parentElement && g.parentElement.tagName.toLowerCase() === 'svg') {
+            score += 20;
+        }
+        
+        candidates.push({
+            element: g,
+            score: score,
+            pathCount: allPaths.length,
+            childGroupCount: childGroups.length,
+            depth: depth,
+            isTopLevel: g.parentElement?.tagName.toLowerCase() === 'svg'
+        });
     }
     
-    // If we have 1-5 top-level groups, these are likely the threads
-    // Looom supports up to 5 threads [^1^]
-    if (candidateGroups.length >= 1 && candidateGroups.length <= 5) {
-        // These are probably the threads
-        candidateGroups.forEach((g, index) => {
-            if (!hasDrawableContent(g)) return;
-            
-            const allPaths = getAllPathsRecursive(g);
-            if (allPaths.length === 0) return;
-            
-            // Get the first visible path to sample styles
-            let samplePath = null;
-            for (const p of allPaths) {
-                if (isElementVisible(p)) {
-                    samplePath = p;
-                    break;
+    candidates.sort((a, b) => b.score - a.score);
+    
+    const selectedThreads = [];
+    const usedElements = new Set();
+    
+    for (const candidate of candidates) {
+        let skip = false;
+        for (const used of usedElements) {
+            if (candidate.element.closest(`#${used.id}`) || used.contains(candidate.element)) {
+                skip = true;
+                break;
+            }
+            if (used.closest(`#${candidate.element.id}`) || candidate.element.contains(used)) {
+                const idx = selectedThreads.findIndex(t => t.element === used);
+                if (idx !== -1) {
+                    selectedThreads.splice(idx, 1);
+                    usedElements.delete(used);
                 }
+                break;
             }
-            if (!samplePath) return;
+        }
+        if (skip) continue;
+        
+        if (candidate.pathCount < 3 && candidate.childGroupCount === 0) continue;
+        
+        selectedThreads.push(candidate);
+        usedElements.add(candidate.element);
+    }
+    
+    if (selectedThreads.length >= 1) {
+        selectedThreads.forEach((candidate, index) => {
+            const allPaths = getAllDrawableElements(candidate.element);
+            const style = sampleThreadStyle(allPaths);
             
-            const stroke = samplePath.getAttribute('stroke');
-            const fill = samplePath.getAttribute('fill');
-            const hasStroke = stroke && stroke !== 'none' && stroke !== 'transparent';
-            const hasFill = fill && fill !== 'none' && fill !== 'transparent';
-            
-            let threadType, threadColor;
-            if (hasFill && !hasStroke) {
-                threadType = 'fill';
-                threadColor = fill;
-            } else {
-                threadType = 'line';
-                threadColor = stroke || fill || '#000000';
-            }
+            if (!style) return;
             
             const thread = {
                 id: `thread-${index}`,
-                element: g,
+                element: candidate.element,
                 paths: allPaths,
                 name: `Thread ${index + 1}`,
-                type: threadType,
-                color: threadColor,
-                strokeWidth: parseFloat(samplePath.getAttribute('stroke-width')) || 2,
-                opacity: parseFloat(samplePath.getAttribute('opacity')) || 1,
-                strokeLinecap: samplePath.getAttribute('stroke-linecap') || 'round',
-                blendMode: 'normal'
+                type: style.type,
+                color: style.color,
+                strokeWidth: style.strokeWidth,
+                opacity: style.opacity,
+                strokeLinecap: style.strokeLinecap,
+                blendMode: style.blendMode,
+                debug: `${allPaths.length} paths, ${candidate.childGroupCount} subgroups, depth ${candidate.depth}`
             };
             
             threads.push(thread);
@@ -639,91 +744,69 @@ function extractThreads(svg) {
         });
     }
     
-    // Fallback: if no threads found, scan ALL groups recursively
     if (threads.length === 0) {
-        const allGroups = svg.querySelectorAll('g');
-        const processedPaths = new Set();
+        const allPaths = getAllDrawableElements(svg);
+        const pathsByParent = new Map();
         
-        for (const g of allGroups) {
-            if (isInDefsOrMetadata(g)) continue;
-            if (!isElementVisible(g)) continue;
+        for (const path of allPaths) {
+            const parent = path.parentElement;
+            if (!parent || parent.tagName.toLowerCase() === 'svg') continue;
+            if (isInDefsOrMetadata(parent)) continue;
             
-            // Only consider groups that are direct children of svg or another group
-            // but NOT groups that only contain other groups (intermediate frame groups)
-            const directPaths = Array.from(g.children).filter(c => {
-                const tag = c.tagName.toLowerCase();
-                return ['path', 'line', 'polyline', 'polygon', 'rect', 'circle', 'ellipse'].includes(tag);
-            });
-            
-            // If this group has direct paths, it might be a frame group
-            // We want to group by the PARENT of these frame groups
-            if (directPaths.length > 0) {
-                const parent = g.parentElement;
-                if (parent && parent.tagName.toLowerCase() === 'g' && !processedPaths.has(parent)) {
-                    const parentPaths = getAllPathsRecursive(parent);
-                    if (parentPaths.length > 0 && !isInDefsOrMetadata(parent)) {
-                        processedPaths.add(parent);
-                        
-                        let samplePath = null;
-                        for (const p of parentPaths) {
-                            if (isElementVisible(p)) {
-                                samplePath = p;
-                                break;
-                            }
-                        }
-                        if (!samplePath) continue;
-                        
-                        const stroke = samplePath.getAttribute('stroke');
-                        const fill = samplePath.getAttribute('fill');
-                        const hasStroke = stroke && stroke !== 'none';
-                        const hasFill = fill && fill !== 'none';
-                        
-                        const thread = {
-                            id: `thread-${threads.length}`,
-                            element: parent,
-                            paths: parentPaths,
-                            name: `Thread ${threads.length + 1}`,
-                            type: hasFill && !hasStroke ? 'fill' : 'line',
-                            color: hasFill && !hasStroke ? fill : (stroke || fill || '#000000'),
-                            strokeWidth: parseFloat(samplePath.getAttribute('stroke-width')) || 2,
-                            opacity: parseFloat(samplePath.getAttribute('opacity')) || 1,
-                            strokeLinecap: samplePath.getAttribute('stroke-linecap') || 'round',
-                            blendMode: 'normal'
-                        };
-                        
-                        threads.push(thread);
-                        createThreadControl(thread);
-                    }
-                }
+            if (!pathsByParent.has(parent)) {
+                pathsByParent.set(parent, []);
             }
+            pathsByParent.get(parent).push(path);
+        }
+        
+        let index = 0;
+        for (const [parent, paths] of pathsByParent) {
+            if (paths.length < 2) continue;
+            
+            const style = sampleThreadStyle(paths);
+            if (!style) continue;
+            
+            const thread = {
+                id: `thread-${index}`,
+                element: parent,
+                paths: paths,
+                name: `Thread ${index + 1}`,
+                type: style.type,
+                color: style.color,
+                strokeWidth: style.strokeWidth,
+                opacity: style.opacity,
+                strokeLinecap: style.strokeLinecap,
+                blendMode: style.blendMode,
+                debug: `${paths.length} paths (grouped by parent)`
+            };
+            
+            threads.push(thread);
+            createThreadControl(thread);
+            index++;
         }
     }
     
-    // Ultimate fallback: all visible paths as one thread
     if (threads.length === 0) {
-        const allPaths = svg.querySelectorAll('path, line, polyline, polygon, rect, circle, ellipse');
-        const visiblePaths = Array.from(allPaths).filter(p => isElementVisible(p) && !isInDefsOrMetadata(p));
-        
-        if (visiblePaths.length > 0) {
-            const samplePath = visiblePaths[0];
-            const stroke = samplePath.getAttribute('stroke');
-            const fill = samplePath.getAttribute('fill');
-            const hasFill = fill && fill !== 'none';
-            
-            const thread = {
-                id: 'thread-0',
-                element: svg,
-                paths: visiblePaths,
-                name: 'Main Thread',
-                type: hasFill ? 'fill' : 'line',
-                color: hasFill ? fill : (stroke || '#000000'),
-                strokeWidth: parseFloat(samplePath.getAttribute('stroke-width')) || 2,
-                opacity: parseFloat(samplePath.getAttribute('opacity')) || 1,
-                strokeLinecap: samplePath.getAttribute('stroke-linecap') || 'round',
-                blendMode: 'normal'
-            };
-            threads.push(thread);
-            createThreadControl(thread);
+        const allPaths = getAllDrawableElements(svg);
+        if (allPaths.length > 0) {
+            const style = sampleThreadStyle(allPaths);
+            if (style) {
+                const thread = {
+                    id: 'thread-0',
+                    element: svg,
+                    paths: allPaths,
+                    name: 'Main Thread',
+                    type: style.type,
+                    color: style.color,
+                    strokeWidth: style.strokeWidth,
+                    opacity: style.opacity,
+                    strokeLinecap: style.strokeLinecap,
+                    blendMode: style.blendMode,
+                    debug: `${allPaths.length} paths (fallback)`
+                };
+                threads.push(thread);
+                createThreadControl(thread);
+            }
         }
     }
     
@@ -740,8 +823,10 @@ function createThreadControl(thread) {
     card.innerHTML = `
         <div class="thread-header">
             <div class="thread-color-preview" style="background: ${color}" id="preview-${thread.id}"></div>
-            <div class="thread-name">${thread.name} <span style="color:#666;font-size:0.75rem;">(${thread.paths.length} paths)</span></div>
+            <div class="thread-name">${thread.name}</div>
         </div>
+        
+        <div class="debug-info">${thread.debug || ''}</div>
         
         <div class="control-group">
             <label class="control-label">Brush Type</label>
@@ -813,7 +898,6 @@ function updateThread(threadId, property, value) {
         if (capControl) capControl.style.display = value === 'line' ? 'block' : 'none';
     }
     
-    // Apply styles WITHOUT breaking animations
     applyThreadStyles(thread);
 }
 
@@ -837,16 +921,49 @@ function applyThreadStyles(thread) {
 }
 
 // ============================================
-// ANIMATION - FIXED: Don't destroy SMIL state
+// ANIMATION - FIXED PLAY/PAUSE
 // ============================================
+
+function updatePlayButton() {
+    const btn = document.getElementById('playBtn');
+    if (isPlaying) {
+        btn.textContent = '⏸';
+        btn.title = 'Pause';
+        btn.classList.add('active');
+    } else {
+        btn.textContent = '▶';
+        btn.title = 'Play';
+        btn.classList.remove('active');
+    }
+}
+
+function startAnimation() {
+    if (!currentSVG) return;
+    
+    // Try SVG native animation API first
+    if (currentSVG.unpauseAnimations) {
+        currentSVG.unpauseAnimations();
+    }
+    
+    // Also ensure all animate elements are running
+    const animates = currentSVG.querySelectorAll('animate, animateTransform, animateMotion, set');
+    animates.forEach(anim => {
+        // Remove any frozen state
+        anim.removeAttribute('fill');
+        // Ensure begin is set
+        if (!anim.getAttribute('begin')) {
+            anim.setAttribute('begin', '0s');
+        }
+    });
+}
 
 function togglePlay() {
     isPlaying = !isPlaying;
-    document.getElementById('playBtn').textContent = isPlaying ? '⏸' : '▶';
+    updatePlayButton();
     
     if (!currentSVG) return;
     
-    // Use SVG animation control API if available
+    // Method 1: SVG native API
     if (currentSVG.pauseAnimations && currentSVG.unpauseAnimations) {
         if (isPlaying) {
             currentSVG.unpauseAnimations();
@@ -856,8 +973,8 @@ function togglePlay() {
         return;
     }
     
-    // Fallback: toggle CSS animation-play-state on all animated elements
-    const animatedElements = currentSVG.querySelectorAll('animate, animateTransform, animateMotion, [style*="animation"]');
+    // Method 2: CSS animation control for CSS-based animations
+    const animatedElements = currentSVG.querySelectorAll('[style*="animation"], animate, animateTransform, animateMotion');
     animatedElements.forEach(el => {
         if (isPlaying) {
             el.style.animationPlayState = 'running';
@@ -867,9 +984,15 @@ function togglePlay() {
     });
 }
 
-// ============================================
-// BRUSH PRESETS
-// ============================================
+function zoom(delta) {
+    zoomLevel = Math.max(0.1, Math.min(3, zoomLevel + delta));
+    svgContainer.style.transform = `scale(${zoomLevel})`;
+}
+
+function resetView() {
+    zoomLevel = 1;
+    svgContainer.style.transform = 'scale(1)';
+}
 
 function toggleBrushMenu() {
     document.getElementById('brushMenu').classList.toggle('show');
@@ -880,6 +1003,10 @@ function toggleExport() {
     document.getElementById('exportMenu').classList.toggle('show');
     document.getElementById('brushMenu').classList.remove('show');
 }
+
+// ============================================
+// BRUSH PRESETS
+// ============================================
 
 function saveCurrentBrushes() {
     if (threads.length === 0) {
@@ -914,13 +1041,19 @@ function loadBrushPreset(event) {
     const file = event.target.files[0];
     if (!file) return;
     
+    // Validate file type
+    if (!file.name.endsWith('.json') && file.type !== 'application/json') {
+        alert('Please upload a .json brush preset file.');
+        return;
+    }
+    
     const reader = new FileReader();
     reader.onload = (e) => {
         try {
             const preset = JSON.parse(e.target.result);
             applyBrushPreset(preset);
         } catch (err) {
-            alert('Invalid brush preset file');
+            alert('Invalid brush preset file. Must be a valid .json file exported from Reeestyle.');
         }
     };
     reader.readAsText(file);
@@ -928,7 +1061,7 @@ function loadBrushPreset(event) {
 
 function applyBrushPreset(preset) {
     if (!preset.brushes || !Array.isArray(preset.brushes)) {
-        alert('Invalid preset format');
+        alert('Invalid preset format. Expected a "brushes" array.');
         return;
     }
     
@@ -1030,20 +1163,6 @@ function deletePreset(index) {
 }
 
 // ============================================
-// VIEW CONTROLS
-// ============================================
-
-function zoom(delta) {
-    zoomLevel = Math.max(0.1, Math.min(3, zoomLevel + delta));
-    svgContainer.style.transform = `scale(${zoomLevel})`;
-}
-
-function resetView() {
-    zoomLevel = 1;
-    svgContainer.style.transform = 'scale(1)';
-}
-
-// ============================================
 // EXPORT
 // ============================================
 
@@ -1091,7 +1210,6 @@ function exportPNG() {
     toggleExport();
 }
 
-// Utility
 function rgbToHex(color) {
     if (!color || color === 'none') return '#000000';
     if (color.startsWith('#')) return color;
@@ -1106,7 +1224,6 @@ function rgbToHex(color) {
     return '#000000';
 }
 
-// Close menus when clicking outside
 document.addEventListener('click', (e) => {
     if (!e.target.closest('.export-menu')) {
         document.getElementById('exportMenu').classList.remove('show');
