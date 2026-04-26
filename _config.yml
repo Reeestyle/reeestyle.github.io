@@ -1,0 +1,14 @@
+_config.yml
+# Build settings
+exclude:
+  - .git
+  - .gitignore
+  - Gemfile
+  - Gemfile.lock
+
+# Include dotfiles
+include:
+  - .htaccess
+
+# Disable Jekyll processing if needed (for GitHub Pages)
+safe: true
