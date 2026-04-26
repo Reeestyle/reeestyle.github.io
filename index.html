@@ -1000,94 +1000,208 @@ function buildThreadWheel() {
         
         wheel.appendChild(dot);
     });
+    
+    console.log(`Detected ${threads.length} threads in animation`);
 }
 
 function selectThread(index) {
     if (index < 0 || index >= threads.length) return;
     
-    document.querySelectorAll('.thread-dot').forEach((dot, i) => {
-        dot.classList.toggle('active', i === index);
-    });
-    
     activeThreadIndex = index;
     const thread = threads[index];
     
-    document.getElementById('activeThreadName').textContent = thread.name;
-    syncControlsToThread(index);
-}
-
-function syncControlsToThread(index) {
-    const thread = threads[index];
+    document.querySelectorAll('.thread-dot').forEach((el, i) => {
+        if (i === index) {
+            el.classList.add('active');
+        } else {
+            el.classList.remove('active');
+        }
+    });
+    
+    document.getElementById('activeThreadName').textContent = `${thread.name} (${threads.length} total)`;
     document.getElementById('brushType').value = thread.type;
-    document.getElementById('brushColor').value = rgbToHex(thread.color);
+    document.getElementById('brushColor').value = thread.color;
     document.getElementById('brushWidth').value = thread.strokeWidth;
     document.getElementById('widthDisplay').textContent = thread.strokeWidth + 'px';
     document.getElementById('brushCap').value = thread.strokeLinecap;
     document.getElementById('brushOpacity').value = thread.opacity;
     document.getElementById('opacityDisplay').textContent = Math.round(thread.opacity * 100) + '%';
-    
-    const isLine = thread.type === 'line';
-    document.getElementById('widthControl').style.display = isLine ? 'block' : 'none';
-    document.getElementById('capControl').style.display = isLine ? 'block' : 'none';
 }
 
 function updateActiveThread(property, value) {
-    if (activeThreadIndex < 0) return;
-    updateThreadByIndex(activeThreadIndex, property, value);
-    syncControlsToThread(activeThreadIndex);
-}
-
-function updateThreadByIndex(index, property, value) {
-    const thread = threads[index];
-    if (!thread) return;
+    if (activeThreadIndex < 0 || activeThreadIndex >= threads.length) return;
     
-    thread[property] = value;
+    const thread = threads[activeThreadIndex];
     
-    if (property === 'color') {
-        const dot = document.getElementById(`thread-dot-${index}`);
-        if (dot) dot.style.background = value;
-    }
-    
-    applyThreadStyles(thread);
-}
-
-function applyThreadStyles(thread) {
-    thread.paths.forEach(path => {
-        if (thread.type === 'fill') {
-            path.setAttribute('fill', thread.color);
-            path.setAttribute('stroke', 'none');
-            path.removeAttribute('stroke-width');
-            path.removeAttribute('stroke-linecap');
+    if (property === 'strokeWidth') {
+        thread.strokeWidth = parseFloat(value);
+        document.getElementById('widthDisplay').textContent = value + 'px';
+        thread.paths.forEach(path => path.setAttribute('stroke-width', value));
+    } else if (property === 'color') {
+        thread.color = value;
+        if (thread.type === 'line') {
+            thread.paths.forEach(path => {
+                if (path.getAttribute('stroke') !== 'none') path.setAttribute('stroke', value);
+            });
         } else {
-            path.setAttribute('stroke', thread.color);
-            path.setAttribute('fill', 'none');
-            path.setAttribute('stroke-width', thread.strokeWidth);
-            path.setAttribute('stroke-linecap', thread.strokeLinecap);
-            path.setAttribute('stroke-linejoin', 'round');
+            thread.paths.forEach(path => path.setAttribute('fill', value));
         }
-        path.setAttribute('opacity', thread.opacity);
+        document.getElementById(`thread-dot-${activeThreadIndex}`).style.background = value;
+    } else if (property === 'opacity') {
+        thread.opacity = parseFloat(value);
+        document.getElementById('opacityDisplay').textContent = Math.round(value * 100) + '%';
+        thread.paths.forEach(path => path.setAttribute('opacity', value));
+    } else if (property === 'strokeLinecap') {
+        thread.strokeLinecap = value;
+        thread.paths.forEach(path => path.setAttribute('stroke-linecap', value));
+    } else if (property === 'type') {
+        thread.type = value;
+    }
+}
+
+function storeOriginalStyles() {
+    originalThreadStyles = threads.map(thread => ({
+        color: thread.color,
+        strokeWidth: thread.strokeWidth,
+        opacity: thread.opacity,
+        strokeLinecap: thread.strokeLinecap
+    }));
+}
+
+// ====================
+// PRESET BRUSHES
+// ====================
+
+function renderPresetBrushes() {
+    const grid = document.getElementById('presetGrid');
+    grid.innerHTML = '';
+    
+    PREINSTALLED_BRUSHES.forEach(brush => {
+        const swatch = document.createElement('div');
+        swatch.className = 'preset-swatch';
+        swatch.dataset.name = brush.name;
+        swatch.style.background = `linear-gradient(135deg, ${brush.colors.join(', ')})`;
+        swatch.onclick = () => applyBrushPreset(brush);
+        grid.appendChild(swatch);
     });
 }
 
+function applyBrushPreset(brush) {
+    threads.forEach((thread, index) => {
+        const color = brush.colors[index % brush.colors.length];
+        thread.color = color;
+        thread.paths.forEach(path => {
+            if (thread.type === 'line') {
+                if (path.getAttribute('stroke') !== 'none') path.setAttribute('stroke', color);
+            } else {
+                path.setAttribute('fill', color);
+            }
+        });
+        document.getElementById(`thread-dot-${index}`).style.background = color;
+    });
+}
+
+function saveCurrentBrushes() {
+    const data = threads.map(thread => ({
+        name: thread.name,
+        type: thread.type,
+        color: thread.color,
+        strokeWidth: thread.strokeWidth,
+        opacity: thread.opacity,
+        strokeLinecap: thread.strokeLinecap
+    }));
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'reeestyle-brushes.json';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function loadBrushPreset(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const data = JSON.parse(e.target.result);
+            data.forEach((item, index) => {
+                if (index < threads.length) {
+                    const thread = threads[index];
+                    thread.type = item.type;
+                    thread.color = item.color;
+                    thread.strokeWidth = item.strokeWidth;
+                    thread.opacity = item.opacity;
+                    thread.strokeLinecap = item.strokeLinecap;
+                    
+                    thread.paths.forEach(path => {
+                        if (thread.type === 'line') {
+                            path.setAttribute('stroke', item.color);
+                        } else {
+                            path.setAttribute('fill', item.color);
+                        }
+                        path.setAttribute('stroke-width', item.strokeWidth);
+                        path.setAttribute('opacity', item.opacity);
+                        path.setAttribute('stroke-linecap', item.strokeLinecap);
+                    });
+                    
+                    document.getElementById(`thread-dot-${index}`).style.background = item.color;
+                }
+            });
+            
+            if (activeThreadIndex >= 0) {
+                selectThread(activeThreadIndex);
+            }
+        } catch (err) {
+            alert('Error loading brush preset: ' + err.message);
+        }
+    };
+    reader.readAsText(file);
+}
+
 // ====================
-// ANIMATION
+// ANIMATION CONTROL
 // ====================
 
 function detectFrameInfo() {
-    if (!currentSVG) return;
-    const animates = currentSVG.querySelectorAll('animate, animateTransform');
-    totalFrames = animates.length || 1;
+    const svg = currentSVG;
+    if (!svg) return;
+    
+    // Look for animations in the SVG
+    const animations = svg.querySelectorAll('animate, animateMotion, animateTransform, set');
+    let maxDur = 0;
+    
+    animations.forEach(anim => {
+        const dur = anim.getAttribute('dur');
+        if (dur) {
+            let ms = parseDuration(dur);
+            const repeatCount = anim.getAttribute('repeatCount') || 1;
+            const repeat = repeatCount === 'indefinite' ? 1 : parseFloat(repeatCount);
+            ms *= repeat;
+            maxDur = Math.max(maxDur, ms);
+        }
+    });
+    
+    if (maxDur > 0) {
+        const fps = 60;
+        totalFrames = Math.ceil(maxDur / 1000 * fps);
+    } else {
+        totalFrames = 1;
+    }
+    
+    currentFrame = 0;
     updateFrameDisplay();
 }
 
-function updateFrameDisplay() {
-    document.getElementById('frameDisplay').textContent = `${currentFrame} / ${totalFrames}`;
-}
-
-function updatePlayButton() {
-    const btn = document.getElementById('playBtn');
-    btn.textContent = isPlaying ? '⏸' : '▶';
-    btn.classList.toggle('active', isPlaying);
+function parseDuration(dur) {
+    if (!dur) return 1000;
+    dur = dur.toString().toLowerCase();
+    if (dur.endsWith('ms')) return parseFloat(dur);
+    if (dur.endsWith('s')) return parseFloat(dur) * 1000;
+    return parseFloat(dur) * 1000;
 }
 
 function startAnimation() {
@@ -1097,210 +1211,69 @@ function startAnimation() {
         currentSVG.unpauseAnimations();
     }
     
-    const animates = currentSVG.querySelectorAll('animate, animateTransform, animateMotion');
-    animates.forEach(anim => {
-        anim.removeAttribute('fill');
-        if (!anim.getAttribute('begin')) anim.setAttribute('begin', '0s');
-    });
+    const animate = () => {
+        if (!isPlaying) {
+            animationFrameId = requestAnimationFrame(animate);
+            return;
+        }
+        
+        if (totalFrames > 1) {
+            currentFrame = (currentFrame + 1) % totalFrames;
+        }
+        
+        updateFrameDisplay();
+        animationFrameId = requestAnimationFrame(animate);
+    };
     
-    if (animationFrameId) cancelAnimationFrame(animationFrameId);
-    animateLoop();
+    animationFrameId = requestAnimationFrame(animate);
 }
 
-function animateLoop() {
-    if (!isPlaying || !currentSVG) return;
-    
-    if (currentSVG.getCurrentTime) {
-        const time = currentSVG.getCurrentTime();
-        currentFrame = Math.floor(time * 12) % Math.max(totalFrames, 1);
-        updateFrameDisplay();
-    }
-    
-    animationFrameId = requestAnimationFrame(animateLoop);
+function updateFrameDisplay() {
+    document.getElementById('frameDisplay').textContent = `${currentFrame} / ${totalFrames}`;
 }
 
 function togglePlay() {
     isPlaying = !isPlaying;
     updatePlayButton();
-    
-    if (!currentSVG) return;
-    
-    if (currentSVG.pauseAnimations && currentSVG.unpauseAnimations) {
-        if (isPlaying) {
-            currentSVG.unpauseAnimations();
-            animateLoop();
-        } else {
-            currentSVG.pauseAnimations();
-            if (animationFrameId) cancelAnimationFrame(animationFrameId);
-        }
-    }
 }
 
-function stepForward() {
-    if (!currentSVG) return;
-    currentFrame = (currentFrame + 1) % Math.max(totalFrames, 1);
-    updateFrameDisplay();
-    if (currentSVG.getCurrentTime && currentSVG.setCurrentTime) {
-        currentSVG.setCurrentTime(currentSVG.getCurrentTime() + (1/12));
-    }
-}
-
-function stepBack() {
-    if (!currentSVG) return;
-    currentFrame = currentFrame > 0 ? currentFrame - 1 : Math.max(totalFrames - 1, 0);
-    updateFrameDisplay();
-    if (currentSVG.getCurrentTime && currentSVG.setCurrentTime) {
-        currentSVG.setCurrentTime(Math.max(0, currentSVG.getCurrentTime() - (1/12)));
-    }
+function updatePlayButton() {
+    const btn = document.getElementById('playBtn');
+    btn.textContent = isPlaying ? '⏸' : '▶';
+    btn.classList.toggle('active', isPlaying);
 }
 
 function goToStart() {
     currentFrame = 0;
     updateFrameDisplay();
-    if (currentSVG && currentSVG.setCurrentTime) currentSVG.setCurrentTime(0);
 }
 
 function goToEnd() {
-    currentFrame = Math.max(totalFrames - 1, 0);
+    currentFrame = totalFrames - 1;
     updateFrameDisplay();
-    if (currentSVG && currentSVG.setCurrentTime) currentSVG.setCurrentTime(totalFrames / 12);
 }
 
-// ====================
-// PREINSTALLED BRUSHES
-// ====================
-
-function initPreinstalledBrushes() {
-    const grid = document.getElementById('presetGrid');
-    PREINSTALLED_BRUSHES.forEach((preset, index) => {
-        const swatch = document.createElement('div');
-        swatch.className = 'preset-swatch';
-        swatch.style.background = `linear-gradient(135deg, ${preset.colors[0]}, ${preset.colors[1] || preset.colors[0]})`;
-        swatch.setAttribute('data-name', preset.name);
-        swatch.onclick = () => applyPreinstalledPreset(index);
-        grid.appendChild(swatch);
-    });
+function stepBack() {
+    if (currentFrame > 0) currentFrame--;
+    updateFrameDisplay();
 }
 
-function applyPreinstalledPreset(index) {
-    const preset = PREINSTALLED_BRUSHES[index];
-    if (!preset || threads.length === 0) return;
-    
-    threads.forEach((thread, i) => {
-        if (i >= preset.colors.length) return;
-        updateThreadByIndex(i, 'color', preset.colors[i]);
-        if (preset.name === 'Neon') {
-            updateThreadByIndex(i, 'strokeWidth', 3);
-            updateThreadByIndex(i, 'opacity', 0.9);
-        } else if (preset.name === 'Pastel') {
-            updateThreadByIndex(i, 'strokeWidth', 4);
-            updateThreadByIndex(i, 'opacity', 0.6);
-        }
-    });
-    
-    if (activeThreadIndex >= 0) syncControlsToThread(activeThreadIndex);
+function stepForward() {
+    if (currentFrame < totalFrames - 1) currentFrame++;
+    updateFrameDisplay();
 }
 
-// ====================
-// BRUSH PRESETS
-// ====================
-
-function saveCurrentBrushes() {
-    if (threads.length === 0) {
-        alert('Open a project first!');
-        return;
-    }
-    
-    const presetName = prompt('Name your brush preset:', 'My Brush Set');
-    if (!presetName) return;
-    
-    const preset = {
-        name: presetName,
-        date: new Date().toISOString(),
-        brushes: threads.map(t => ({
-            name: t.name,
-            type: t.type,
-            color: t.color,
-            strokeWidth: t.strokeWidth,
-            opacity: t.opacity,
-            strokeLinecap: t.strokeLinecap,
-            blendMode: t.blendMode
-        }))
-    };
-    
-    const blob = new Blob([JSON.stringify(preset, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `reeestyle-${presetName.replace(/\s+/g, '-').toLowerCase()}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
+function resetView() {
+    zoomLevel = 1;
+    const container = document.getElementById('svgContainer');
+    container.style.transform = 'scale(1)';
 }
 
-function loadBrushPreset(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    
-    if (!file.name.endsWith('.json')) {
-        alert('Please upload a .json brush preset file.');
-        return;
-    }
-    
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        try {
-            const preset = JSON.parse(e.target.result);
-            applyBrushPreset(preset);
-        } catch (err) {
-            alert('Invalid brush preset file.');
-        }
-    };
-    reader.readAsText(file);
-}
-
-function applyBrushPreset(preset) {
-    if (!preset.brushes || !Array.isArray(preset.brushes)) {
-        alert('Invalid preset format.');
-        return;
-    }
-    
-    preset.brushes.forEach((brush, index) => {
-        if (index >= threads.length) return;
-        if (brush.type) updateThreadByIndex(index, 'type', brush.type);
-        if (brush.color) updateThreadByIndex(index, 'color', brush.color);
-        if (brush.strokeWidth) updateThreadByIndex(index, 'strokeWidth', brush.strokeWidth);
-        if (brush.opacity !== undefined) updateThreadByIndex(index, 'opacity', brush.opacity);
-        if (brush.strokeLinecap) updateThreadByIndex(index, 'strokeLinecap', brush.strokeLinecap);
-    });
-    
-    if (activeThreadIndex >= 0) syncControlsToThread(activeThreadIndex);
-    alert(`Applied "${preset.name}"!`);
-}
-
-function resetToDefault() {
-    if (originalThreadStyles.length === 0) return;
-    
-    originalThreadStyles.forEach((style, index) => {
-        if (index >= threads.length) return;
-        updateThreadByIndex(index, 'type', style.type);
-        updateThreadByIndex(index, 'color', style.color);
-        updateThreadByIndex(index, 'strokeWidth', style.strokeWidth);
-        updateThreadByIndex(index, 'opacity', style.opacity);
-        updateThreadByIndex(index, 'strokeLinecap', style.strokeLinecap);
-    });
-    
-    if (activeThreadIndex >= 0) syncControlsToThread(activeThreadIndex);
-}
-
-function storeOriginalStyles() {
-    originalThreadStyles = threads.map(t => ({
-        type: t.type,
-        color: t.color,
-        strokeWidth: t.strokeWidth,
-        opacity: t.opacity,
-        strokeLinecap: t.strokeLinecap,
-        blendMode: t.blendMode
-    }));
+function zoom(delta) {
+    zoomLevel += delta;
+    zoomLevel = Math.max(0.1, Math.min(3, zoomLevel));
+    const container = document.getElementById('svgContainer');
+    container.style.transform = `scale(${zoomLevel})`;
 }
 
 // ====================
@@ -1309,72 +1282,52 @@ function storeOriginalStyles() {
 
 function exportSVG() {
     if (!currentSVG) return;
-    
     const serializer = new XMLSerializer();
-    const source = serializer.serializeToString(currentSVG);
-    const blob = new Blob([source], { type: 'image/svg+xml;charset=utf-8' });
+    const svgString = serializer.serializeToString(currentSVG);
+    const blob = new Blob([svgString], { type: 'image/svg+xml' });
     const url = URL.createObjectURL(blob);
-    
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${currentProject?.name || 'reeestyle'}-export.svg`;
-    link.click();
-    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = (currentProject?.name || 'export') + '.svg';
+    a.click();
     URL.revokeObjectURL(url);
 }
 
 function exportPNG() {
     if (!currentSVG) return;
     
-    const svgData = new XMLSerializer().serializeToString(currentSVG);
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
-    const img = new Image();
+    const svg = currentSVG;
     
-    const rect = currentSVG.getBoundingClientRect();
-    canvas.width = rect.width * 2;
-    canvas.height = rect.height * 2;
+    const bbox = svg.getBBox?.() || { x: 0, y: 0, width: 800, height: 600 };
+    canvas.width = bbox.width;
+    canvas.height = bbox.height;
+    
+    const img = new Image();
+    const serializer = new XMLSerializer();
+    const svgString = serializer.serializeToString(svg);
+    const blob = new Blob([svgString], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
     
     img.onload = () => {
-        ctx.fillStyle = 'white';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        
-        const link = document.createElement('a');
-        link.download = `${currentProject?.name || 'reeestyle'}-export.png`;
-        link.href = canvas.toDataURL('image/png');
-        link.click();
+        ctx.drawImage(img, 0, 0);
+        const pngUrl = canvas.toDataURL('image/png');
+        const a = document.createElement('a');
+        a.href = pngUrl;
+        a.download = (currentProject?.name || 'export') + '.png';
+        a.click();
+        URL.revokeObjectURL(url);
     };
     
-    img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+    img.src = url;
 }
 
-function zoom(delta) {
-    zoomLevel = Math.max(0.1, Math.min(3, zoomLevel + delta));
-    document.getElementById('svgContainer').style.transform = `scale(${zoomLevel})`;
-}
+// ====================
+// INIT
+// ====================
 
-function resetView() {
-    zoomLevel = 1;
-    document.getElementById('svgContainer').style.transform = 'scale(1)';
-}
-
-function rgbToHex(color) {
-    if (!color || color === 'none') return '#000000';
-    if (color.startsWith('#')) return color;
-    
-    const rgb = color.match(/\d+/g);
-    if (rgb) {
-        return '#' + rgb.map(x => {
-            const hex = parseInt(x).toString(16);
-            return hex.length === 1 ? '0' + hex : hex;
-        }).join('');
-    }
-    return '#000000';
-}
-
-// Initialize
-initPreinstalledBrushes();
+renderPresetBrushes();
 </script>
 
 </body>
