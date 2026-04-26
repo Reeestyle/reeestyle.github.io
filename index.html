@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Reeestyle</title>
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
@@ -1000,25 +1003,19 @@ function buildThreadWheel() {
         
         wheel.appendChild(dot);
     });
-    
-    console.log(`Detected ${threads.length} threads in animation`);
 }
 
 function selectThread(index) {
-    if (index < 0 || index >= threads.length) return;
-    
     activeThreadIndex = index;
-    const thread = threads[index];
     
-    document.querySelectorAll('.thread-dot').forEach((el, i) => {
-        if (i === index) {
-            el.classList.add('active');
-        } else {
-            el.classList.remove('active');
-        }
+    document.querySelectorAll('.thread-dot').forEach((dot, i) => {
+        dot.classList.toggle('active', i === index);
     });
     
-    document.getElementById('activeThreadName').textContent = `${thread.name} (${threads.length} total)`;
+    const thread = threads[index];
+    if (!thread) return;
+    
+    document.getElementById('activeThreadName').textContent = thread.name;
     document.getElementById('brushType').value = thread.type;
     document.getElementById('brushColor').value = thread.color;
     document.getElementById('brushWidth').value = thread.strokeWidth;
@@ -1026,96 +1023,114 @@ function selectThread(index) {
     document.getElementById('brushCap').value = thread.strokeLinecap;
     document.getElementById('brushOpacity').value = thread.opacity;
     document.getElementById('opacityDisplay').textContent = Math.round(thread.opacity * 100) + '%';
+    
+    document.getElementById('widthControl').style.display = thread.type === 'line' ? 'block' : 'none';
+    document.getElementById('capControl').style.display = thread.type === 'line' ? 'block' : 'none';
 }
 
 function updateActiveThread(property, value) {
     if (activeThreadIndex < 0 || activeThreadIndex >= threads.length) return;
-    
     const thread = threads[activeThreadIndex];
     
-    if (property === 'strokeWidth') {
-        thread.strokeWidth = parseFloat(value);
-        document.getElementById('widthDisplay').textContent = value + 'px';
-        thread.paths.forEach(path => path.setAttribute('stroke-width', value));
+    if (property === 'type') {
+        thread.type = value;
+        document.getElementById('widthControl').style.display = value === 'line' ? 'block' : 'none';
+        document.getElementById('capControl').style.display = value === 'line' ? 'block' : 'none';
     } else if (property === 'color') {
         thread.color = value;
-        if (thread.type === 'line') {
-            thread.paths.forEach(path => {
-                if (path.getAttribute('stroke') !== 'none') path.setAttribute('stroke', value);
-            });
-        } else {
-            thread.paths.forEach(path => path.setAttribute('fill', value));
-        }
         document.getElementById(`thread-dot-${activeThreadIndex}`).style.background = value;
+    } else if (property === 'strokeWidth') {
+        thread.strokeWidth = parseFloat(value);
+        document.getElementById('widthDisplay').textContent = value + 'px';
+    } else if (property === 'strokeLinecap') {
+        thread.strokeLinecap = value;
     } else if (property === 'opacity') {
         thread.opacity = parseFloat(value);
         document.getElementById('opacityDisplay').textContent = Math.round(value * 100) + '%';
-        thread.paths.forEach(path => path.setAttribute('opacity', value));
-    } else if (property === 'strokeLinecap') {
-        thread.strokeLinecap = value;
-        thread.paths.forEach(path => path.setAttribute('stroke-linecap', value));
-    } else if (property === 'type') {
-        thread.type = value;
     }
+    
+    applyThreadStyles();
 }
 
 function storeOriginalStyles() {
-    originalThreadStyles = threads.map(thread => ({
-        color: thread.color,
-        strokeWidth: thread.strokeWidth,
-        opacity: thread.opacity,
-        strokeLinecap: thread.strokeLinecap
+    originalThreadStyles = threads.map(t => ({
+        type: t.type,
+        color: t.color,
+        strokeWidth: t.strokeWidth,
+        opacity: t.opacity,
+        strokeLinecap: t.strokeLinecap
     }));
 }
 
+function applyThreadStyles() {
+    threads.forEach((thread, index) => {
+        thread.paths.forEach(path => {
+            if (thread.type === 'fill') {
+                path.setAttribute('fill', thread.color);
+                path.removeAttribute('stroke');
+            } else {
+                path.setAttribute('stroke', thread.color);
+                path.setAttribute('stroke-width', thread.strokeWidth);
+                path.setAttribute('stroke-linecap', thread.strokeLinecap);
+                path.removeAttribute('fill');
+            }
+            path.setAttribute('opacity', thread.opacity);
+        });
+    });
+}
+
 // ====================
-// PRESET BRUSHES
+// BRUSH PRESETS
 // ====================
 
-function renderPresetBrushes() {
+function renderPresets() {
     const grid = document.getElementById('presetGrid');
     grid.innerHTML = '';
     
     PREINSTALLED_BRUSHES.forEach(brush => {
         const swatch = document.createElement('div');
         swatch.className = 'preset-swatch';
-        swatch.dataset.name = brush.name;
         swatch.style.background = `linear-gradient(135deg, ${brush.colors.join(', ')})`;
-        swatch.onclick = () => applyBrushPreset(brush);
+        swatch.setAttribute('data-name', brush.name);
+        swatch.onclick = () => applyPreset(brush);
         grid.appendChild(swatch);
     });
 }
 
-function applyBrushPreset(brush) {
-    threads.forEach((thread, index) => {
-        const color = brush.colors[index % brush.colors.length];
-        thread.color = color;
-        thread.paths.forEach(path => {
-            if (thread.type === 'line') {
-                if (path.getAttribute('stroke') !== 'none') path.setAttribute('stroke', color);
-            } else {
-                path.setAttribute('fill', color);
-            }
-        });
-        document.getElementById(`thread-dot-${index}`).style.background = color;
+function applyPreset(preset) {
+    threads.forEach((thread, i) => {
+        thread.color = preset.colors[i % preset.colors.length];
+        if (i === activeThreadIndex) {
+            document.getElementById('brushColor').value = thread.color;
+            document.getElementById(`thread-dot-${i}`).style.background = thread.color;
+        } else {
+            document.getElementById(`thread-dot-${i}`).style.background = thread.color;
+        }
     });
+    applyThreadStyles();
 }
 
 function saveCurrentBrushes() {
-    const data = threads.map(thread => ({
-        name: thread.name,
-        type: thread.type,
-        color: thread.color,
-        strokeWidth: thread.strokeWidth,
-        opacity: thread.opacity,
-        strokeLinecap: thread.strokeLinecap
-    }));
+    const preset = {
+        name: prompt('Preset name:', 'My Preset'),
+        threads: threads.map(t => ({
+            name: t.name,
+            type: t.type,
+            color: t.color,
+            strokeWidth: t.strokeWidth,
+            opacity: t.opacity,
+            strokeLinecap: t.strokeLinecap
+        }))
+    };
     
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    if (!preset.name) return;
+    
+    const json = JSON.stringify(preset, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'reeestyle-brushes.json';
+    a.download = preset.name + '.json';
     a.click();
     URL.revokeObjectURL(url);
 }
@@ -1127,109 +1142,37 @@ function loadBrushPreset(event) {
     const reader = new FileReader();
     reader.onload = (e) => {
         try {
-            const data = JSON.parse(e.target.result);
-            data.forEach((item, index) => {
-                if (index < threads.length) {
-                    const thread = threads[index];
-                    thread.type = item.type;
-                    thread.color = item.color;
-                    thread.strokeWidth = item.strokeWidth;
-                    thread.opacity = item.opacity;
-                    thread.strokeLinecap = item.strokeLinecap;
-                    
-                    thread.paths.forEach(path => {
-                        if (thread.type === 'line') {
-                            path.setAttribute('stroke', item.color);
-                        } else {
-                            path.setAttribute('fill', item.color);
-                        }
-                        path.setAttribute('stroke-width', item.strokeWidth);
-                        path.setAttribute('opacity', item.opacity);
-                        path.setAttribute('stroke-linecap', item.strokeLinecap);
-                    });
-                    
-                    document.getElementById(`thread-dot-${index}`).style.background = item.color;
+            const preset = JSON.parse(e.target.result);
+            preset.threads.forEach((presetThread, i) => {
+                if (i < threads.length) {
+                    Object.assign(threads[i], presetThread);
                 }
             });
-            
-            if (activeThreadIndex >= 0) {
-                selectThread(activeThreadIndex);
-            }
+            applyThreadStyles();
+            if (activeThreadIndex >= 0) selectThread(activeThreadIndex);
         } catch (err) {
-            alert('Error loading brush preset: ' + err.message);
+            alert('Invalid preset file');
         }
     };
     reader.readAsText(file);
 }
 
 // ====================
-// ANIMATION CONTROL
+// ANIMATION/PLAYBACK
 // ====================
 
-function detectFrameInfo() {
-    const svg = currentSVG;
-    if (!svg) return;
-    
-    // Look for animations in the SVG
-    const animations = svg.querySelectorAll('animate, animateMotion, animateTransform, set');
-    let maxDur = 0;
-    
-    animations.forEach(anim => {
-        const dur = anim.getAttribute('dur');
-        if (dur) {
-            let ms = parseDuration(dur);
-            const repeatCount = anim.getAttribute('repeatCount') || 1;
-            const repeat = repeatCount === 'indefinite' ? 1 : parseFloat(repeatCount);
-            ms *= repeat;
-            maxDur = Math.max(maxDur, ms);
-        }
-    });
-    
-    if (maxDur > 0) {
-        const fps = 60;
-        totalFrames = Math.ceil(maxDur / 1000 * fps);
-    } else {
-        totalFrames = 1;
-    }
-    
-    currentFrame = 0;
-    updateFrameDisplay();
-}
-
-function parseDuration(dur) {
-    if (!dur) return 1000;
-    dur = dur.toString().toLowerCase();
-    if (dur.endsWith('ms')) return parseFloat(dur);
-    if (dur.endsWith('s')) return parseFloat(dur) * 1000;
-    return parseFloat(dur) * 1000;
-}
-
 function startAnimation() {
-    if (!currentSVG) return;
-    
-    if (currentSVG.unpauseAnimations) {
-        currentSVG.unpauseAnimations();
-    }
-    
-    const animate = () => {
-        if (!isPlaying) {
-            animationFrameId = requestAnimationFrame(animate);
-            return;
+    const updateFrame = () => {
+        if (isPlaying && currentSVG) {
+            if (currentSVG.animationsPaused) {
+                currentSVG.unpauseAnimations();
+            }
+        } else if (!isPlaying && currentSVG && !currentSVG.animationsPaused) {
+            currentSVG.pauseAnimations();
         }
-        
-        if (totalFrames > 1) {
-            currentFrame = (currentFrame + 1) % totalFrames;
-        }
-        
-        updateFrameDisplay();
-        animationFrameId = requestAnimationFrame(animate);
+        animationFrameId = requestAnimationFrame(updateFrame);
     };
-    
-    animationFrameId = requestAnimationFrame(animate);
-}
-
-function updateFrameDisplay() {
-    document.getElementById('frameDisplay').textContent = `${currentFrame} / ${totalFrames}`;
+    updateFrame();
 }
 
 function togglePlay() {
@@ -1239,41 +1182,61 @@ function togglePlay() {
 
 function updatePlayButton() {
     const btn = document.getElementById('playBtn');
-    btn.textContent = isPlaying ? '⏸' : '▶';
+    btn.textContent = isPlaying ? '⏸' : '▶️';
     btn.classList.toggle('active', isPlaying);
 }
 
 function goToStart() {
-    currentFrame = 0;
-    updateFrameDisplay();
-}
-
-function goToEnd() {
-    currentFrame = totalFrames - 1;
-    updateFrameDisplay();
+    if (currentSVG) {
+        currentSVG.setCurrentTime(0);
+        currentFrame = 0;
+        updateFrameDisplay();
+    }
 }
 
 function stepBack() {
-    if (currentFrame > 0) currentFrame--;
-    updateFrameDisplay();
+    if (currentSVG && currentFrame > 0) {
+        currentFrame--;
+        updateFrameDisplay();
+    }
 }
 
 function stepForward() {
-    if (currentFrame < totalFrames - 1) currentFrame++;
-    updateFrameDisplay();
+    if (currentSVG && currentFrame < totalFrames) {
+        currentFrame++;
+        updateFrameDisplay();
+    }
+}
+
+function goToEnd() {
+    if (currentSVG) {
+        currentSVG.setCurrentTime(totalFrames);
+        currentFrame = totalFrames;
+        updateFrameDisplay();
+    }
+}
+
+function detectFrameInfo() {
+    if (currentSVG) {
+        const duration = currentSVG.getCurrentTime?.() || 0;
+        totalFrames = Math.max(1, Math.round(duration * 30));
+        updateFrameDisplay();
+    }
+}
+
+function updateFrameDisplay() {
+    document.getElementById('frameDisplay').textContent = `${currentFrame} / ${totalFrames}`;
+}
+
+function zoom(delta) {
+    zoomLevel = Math.max(0.1, Math.min(3, zoomLevel + delta));
+    const container = document.getElementById('svgContainer');
+    container.style.transform = `scale(${zoomLevel})`;
 }
 
 function resetView() {
     zoomLevel = 1;
-    const container = document.getElementById('svgContainer');
-    container.style.transform = 'scale(1)';
-}
-
-function zoom(delta) {
-    zoomLevel += delta;
-    zoomLevel = Math.max(0.1, Math.min(3, zoomLevel));
-    const container = document.getElementById('svgContainer');
-    container.style.transform = `scale(${zoomLevel})`;
+    document.getElementById('svgContainer').style.transform = 'scale(1)';
 }
 
 // ====================
@@ -1288,7 +1251,7 @@ function exportSVG() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = (currentProject?.name || 'export') + '.svg';
+    a.download = (currentProject?.name || 'reeestyle') + '.svg';
     a.click();
     URL.revokeObjectURL(url);
 }
@@ -1297,37 +1260,36 @@ function exportPNG() {
     if (!currentSVG) return;
     
     const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    const svg = currentSVG;
+    const bbox = currentSVG.getBBox();
+    canvas.width = bbox.width || 800;
+    canvas.height = bbox.height || 600;
     
-    const bbox = svg.getBBox?.() || { x: 0, y: 0, width: 800, height: 600 };
-    canvas.width = bbox.width;
-    canvas.height = bbox.height;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     const img = new Image();
-    const serializer = new XMLSerializer();
-    const svgString = serializer.serializeToString(svg);
-    const blob = new Blob([svgString], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(blob);
-    
     img.onload = () => {
         ctx.drawImage(img, 0, 0);
-        const pngUrl = canvas.toDataURL('image/png');
-        const a = document.createElement('a');
-        a.href = pngUrl;
-        a.download = (currentProject?.name || 'export') + '.png';
-        a.click();
-        URL.revokeObjectURL(url);
+        canvas.toBlob(blob => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = (currentProject?.name || 'reeestyle') + '.png';
+            a.click();
+            URL.revokeObjectURL(url);
+        });
     };
     
-    img.src = url;
+    const serializer = new XMLSerializer();
+    const svgString = serializer.serializeToString(currentSVG);
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgString);
 }
 
 // ====================
 // INIT
 // ====================
-
-renderPresetBrushes();
+renderPresets();
 </script>
 
 </body>
